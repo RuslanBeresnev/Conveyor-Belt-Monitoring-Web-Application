@@ -1,3 +1,4 @@
+import telegram.error
 from fastapi import FastAPI
 from pydantic import BaseModel
 from telegram import Bot
@@ -19,11 +20,12 @@ telegram_bot = Bot(token=Data.TELEGRAM_BOT_TOKEN)
 def get_user_chat_id_in_telegram():
     '''
     Возвращает id Telegram-чата с пользователем, который последним отправил сообщение боту
+    (сообщение должно быть отправлено в течение суток до запуска сервера)
     '''
     url = f"https://api.telegram.org/bot{Data.TELEGRAM_BOT_TOKEN}/getUpdates"
     response = requests.get(url)
     updates = response.json()
-    if updates["ok"] and len(updates) > 0:
+    if updates["ok"] and len(updates["result"]) > 0:
         return updates["result"][-1]["message"]["chat"]["id"]
     return -1
 
@@ -61,8 +63,13 @@ def get_application_info():
 
 @application.post("/notification_service/with_telegram")
 async def send_telegram_notification(notification: TelegramNotification):
-    # Добавить обработку ошибок
-    await telegram_bot.send_message(chat_id=get_user_chat_id_in_telegram(), text=notification.message)
+    user_chat_id = get_user_chat_id_in_telegram()
+    if user_chat_id == -1:
+        return {"status": "ERROR", "method": "telegram_notification", "error_message": "Chat with user not found"}
+    try:
+        await telegram_bot.send_message(chat_id=user_chat_id, text=notification.message)
+    except telegram.error.TelegramError:
+        return {"status": "ERROR", "method": "telegram_notification", "error_message": "Telegram error"}
     return {"status": "OK", "method": "telegram_notification", "message": notification.message}
 
 
