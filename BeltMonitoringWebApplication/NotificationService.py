@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from telegram import Bot
 import telegram.error
@@ -15,7 +15,7 @@ from googleapiclient.discovery import build
 from enum import Enum
 import Data
 
-application = FastAPI()
+router = APIRouter(prefix="/notification", tags=["Notification Service"])
 
 telegram_bot = Bot(token=Data.TELEGRAM_BOT_TOKEN)
 
@@ -83,12 +83,12 @@ class GmailNotification(BaseModel):
     message: str
 
 
-@application.get("/")
-def get_application_info():
-    return {"info": "Web-application for conveyor belt monitoring system"}
+@router.get("/")
+def get_service_info():
+    return {"info": "Notification service with Telegram or Gmail notification sending option"}
 
 
-@application.post("/notification_service/with_telegram")
+@router.post("/with_telegram")
 async def send_telegram_notification(notification: TelegramNotification):
     telegram_notification_error_codes = {NotificationSendingErrorMessage.invalid_bot_token: 500,
                                          NotificationSendingErrorMessage.message_from_user_was_long_ago: 404}
@@ -103,7 +103,7 @@ async def send_telegram_notification(notification: TelegramNotification):
     return {"status": "OK", "method": "telegram_notification", "sent_message": notification.message}
 
 
-@application.post("/notification_service/with_gmail")
+@router.post("/with_gmail")
 def send_gmail_notification(notification: GmailNotification):
     message = MIMEText(notification.message)
     message["to"] = notification.to_email
