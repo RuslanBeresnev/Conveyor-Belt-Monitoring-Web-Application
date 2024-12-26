@@ -13,11 +13,11 @@ from google.auth.exceptions import RefreshError, DefaultCredentialsError
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from enum import Enum
-import Data
+from data import TELEGRAM_BOT_TOKEN, GOOGLE_SCOPES, GOOGLE_CLIENT_SECRET_FILE
 
 router = APIRouter(prefix="/notification", tags=["Notification Service"])
 
-telegram_bot = Bot(token=Data.TELEGRAM_BOT_TOKEN)
+telegram_bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 
 class NotificationSendingErrorMessage(Enum):
@@ -36,7 +36,7 @@ def get_user_chat_id_in_telegram():
     боту (сообщение должно быть отправлено в течение суток до запуска серверe), а error_message - сообщение при
     возникновении ошибки.
     """
-    url = f"https://api.telegram.org/bot{Data.TELEGRAM_BOT_TOKEN}/getUpdates"
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
     response = requests.get(url)
     updates = response.json()
     if not updates["ok"]:
@@ -52,7 +52,7 @@ def authenticate_and_get_credentials():
     credentials = None
     if exists("token.json"):
         try:
-            credentials = Credentials.from_authorized_user_file(filename="token.json", scopes=Data.GOOGLE_SCOPES)
+            credentials = Credentials.from_authorized_user_file(filename="token.json", scopes=GOOGLE_SCOPES)
         except ValueError:
             return None, NotificationSendingErrorMessage.invalid_gmail_token_file
     if not credentials or not credentials.valid:
@@ -63,8 +63,8 @@ def authenticate_and_get_credentials():
                 return None, NotificationSendingErrorMessage.credentials_refreshing_error
         else:
             try:
-                flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file=Data.GOOGLE_CLIENT_SECRET_FILE,
-                                                                 scopes=Data.GOOGLE_SCOPES)
+                flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file=GOOGLE_CLIENT_SECRET_FILE,
+                                                                 scopes=GOOGLE_SCOPES)
                 credentials = flow.run_local_server(port=0)
             except ValueError:
                 return None, NotificationSendingErrorMessage.gmail_client_secret_file_error

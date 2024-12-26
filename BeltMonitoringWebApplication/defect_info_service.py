@@ -1,4 +1,6 @@
 from fastapi import APIRouter
+from database_connection import engine
+from models import ObjectType, Object, DefectType, Photo, Defect
 
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
 
