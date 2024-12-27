@@ -17,8 +17,10 @@ class Object(SQLModel, table=True):
     time: datetime = Field(sa_column=Column(DateTime(timezone=False), nullable=False))
 
     type_object: ObjectType = Relationship(back_populates="objects")
-    defects: list["Defect"] = Relationship(back_populates="base_object", cascade_delete=True)
-    photos: list["Photo"] = Relationship(back_populates="base_object", cascade_delete=True)
+    defect: list["Defect"] = Relationship(sa_relationship_kwargs={"uselist": False}, back_populates="base_object",
+                                          cascade_delete=True)
+    photo: list["Photo"] = Relationship(sa_relationship_kwargs={"uselist": False}, back_populates="base_object",
+                                        cascade_delete=True)
 
 
 class DefectType(SQLModel, table=True):
@@ -43,7 +45,7 @@ class Photo(SQLModel, table=True):
     obj_id: int = Field(foreign_key="objects.id", nullable=False, ondelete="CASCADE")
     image: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
-    base_object: Object = Relationship(back_populates="photos")
+    base_object: Object = Relationship(back_populates="photo")
     defects: list["Defect"] = Relationship(back_populates="photo_object", cascade_delete=True)
 
 
@@ -63,6 +65,6 @@ class Defect(SQLModel, table=True):
     is_critical: bool = Field(default=False, nullable=False)
     is_extreme: bool = Field(default=False, nullable=False)
 
-    base_object: Object = Relationship(back_populates="defects")
+    base_object: Object = Relationship(back_populates="defect")
     type_object: DefectType = Relationship(back_populates="defects")
     photo_object: Photo = Relationship(back_populates="defects")
