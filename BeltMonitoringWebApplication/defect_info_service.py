@@ -71,3 +71,27 @@ def get_defects_of_certain_type(defect_type: str):
         for defect, defect_type in results:
             response.append(form_response_model_from_defect(defect))
         return response
+
+
+@router.get(path="/critical", response_model=list[DefectResponseModel])
+def get_critical_defects():
+    with Session(engine) as session:
+        defects = session.exec(select(Defect).where(Defect.is_critical)).all()
+        if not defects:
+            raise HTTPException(status_code=404, detail=f"There is no critical-level defects")
+        response = []
+        for defect in defects:
+            response.append(form_response_model_from_defect(defect))
+        return response
+
+
+@router.get(path="/extreme", response_model=list[DefectResponseModel])
+def get_extreme_defects():
+    with Session(engine) as session:
+        defects = session.exec(select(Defect).where(Defect.is_extreme)).all()
+        if not defects:
+            raise HTTPException(status_code=404, detail=f"There is no extreme-level defects")
+        response = []
+        for defect in defects:
+            response.append(form_response_model_from_defect(defect))
+        return response
