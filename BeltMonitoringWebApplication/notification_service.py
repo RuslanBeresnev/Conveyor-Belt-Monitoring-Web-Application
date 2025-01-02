@@ -13,11 +13,14 @@ from google.auth.exceptions import RefreshError, DefaultCredentialsError
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from enum import Enum
-from data import TELEGRAM_BOT_TOKEN, GOOGLE_SCOPES, GOOGLE_CLIENT_SECRET_FILE
+from config import Settings
+
+GOOGLE_CLIENT_SECRET_FILE = "client_secret.json"
+GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
 router = APIRouter(prefix="/notification", tags=["Notification Service"])
-
-telegram_bot = Bot(token=TELEGRAM_BOT_TOKEN)
+settings = Settings()
+telegram_bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 
 
 class NotificationSendingErrorMessage(Enum):
