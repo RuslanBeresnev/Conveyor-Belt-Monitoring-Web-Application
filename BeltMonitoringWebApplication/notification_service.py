@@ -14,6 +14,7 @@ from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from enum import Enum
 from config import Settings
+from response_models import ServiceInfoResponseModel, TelegramNotificationResponseModel, GmailNotificationResponseModel
 
 GOOGLE_CLIENT_SECRET_FILE = "client_secret.json"
 GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
@@ -40,7 +41,7 @@ def get_user_chat_id_in_telegram():
     боту (сообщение должно быть отправлено в течение суток до запуска серверe), а error_message - сообщение при
     возникновении ошибки.
     """
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getUpdates"
     response = requests.get(url)
     updates = response.json()
     if not updates["ok"]:
@@ -89,12 +90,14 @@ class GmailNotification(BaseModel):
     message: str
 
 
-@router.get("/")
+@router.get(path="/", response_model=ServiceInfoResponseModel)
 def get_service_info():
-    return {"info": "Notification service with Telegram or Gmail notification sending option"}
+    return ServiceInfoResponseModel(
+        info="Notification service with Telegram or Gmail notification sending option"
+    )
 
 
-@router.post("/with_telegram")
+@router.post("/with_telegram", response_model=TelegramNotificationResponseModel)
 async def send_telegram_notification(notification: TelegramNotification):
     telegram_notification_error_codes = {NotificationSendingErrorMessage.invalid_bot_token: 500,
                                          NotificationSendingErrorMessage.message_from_user_was_long_ago: 404}
@@ -106,10 +109,14 @@ async def send_telegram_notification(notification: TelegramNotification):
         await telegram_bot.send_message(chat_id=user_chat_id, text=notification.message)
     except telegram.error.TelegramError:
         raise HTTPException(status_code=500, detail=NotificationSendingErrorMessage.telegram_error.value)
-    return {"status": "OK", "method": "telegram_notification", "sent_message": notification.message}
+
+    return TelegramNotificationResponseModel(
+        notification_method="telegram_notification",
+        sent_message=notification.message
+    )
 
 
-@router.post("/with_gmail")
+@router.post("/with_gmail", response_model=GmailNotificationResponseModel)
 def send_gmail_notification(notification: GmailNotification):
     message = MIMEText(notification.message)
     message["to"] = notification.to_email
@@ -125,9 +132,15 @@ def send_gmail_notification(notification: GmailNotification):
         raise HTTPException(status_code=403, detail="Credentials not found or incorrect")
     try:
         sent_message = gmail_service.users().messages().send(userId="me", body=formatted_message).execute()
+        print(gmail_service.users())
     except HttpError as e:
         raise HTTPException(status_code=e.status_code, detail=e.error_details)
     except TypeError:
         raise HTTPException(status_code=500, detail="Invalid message format")
-    return {"status": "OK", "method": "gmail_notification", "to": message["to"], "subject": message["subject"],
-            "sent_message": notification.message}
+
+    return GmailNotificationResponseModel(
+        notification_method="gmail_notification",
+        to=message["to"],
+        subject=message["subject"],
+        sent_message=notification.message
+    )

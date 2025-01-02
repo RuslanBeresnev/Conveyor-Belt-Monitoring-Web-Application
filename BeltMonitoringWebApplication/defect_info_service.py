@@ -1,27 +1,11 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from sqlmodel import Session, select
 from base64 import b64encode
-from datetime import datetime
 from database_connection import engine
 from db_models import Defect, DefectType
+from response_models import ServiceInfoResponseModel, DefectResponseModel
 
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
-
-
-class DefectResponseModel(BaseModel):
-    id: int
-    timestamp: datetime  # from Object model
-    type: str  # from DefectType model
-    is_on_belt: bool  # from DefectType model
-    box_width_in_mm: int
-    box_length_in_mm: int
-    longitudinal_position: int  # "location_length_in_conv" parameter
-    transverse_position: int  # "location_width_in_conv" parameter
-    probability: int
-    is_critical: bool
-    is_extreme: bool
-    base64_photo: str  # from Photo model (converted to base64 format)
 
 
 def form_response_model_from_defect(defect: Defect):
@@ -45,9 +29,11 @@ def form_response_model_from_defect(defect: Defect):
     return response
 
 
-@router.get("/")
+@router.get(path="/", response_model=ServiceInfoResponseModel)
 def get_service_info():
-    return {"info": "Service providing information about emerging defects, their types and other useful parameters"}
+    return ServiceInfoResponseModel(
+        info="Service providing information about emerging defects, their types and other useful parameters"
+    )
 
 
 @router.get(path="/id={defect_id}", response_model=DefectResponseModel)
