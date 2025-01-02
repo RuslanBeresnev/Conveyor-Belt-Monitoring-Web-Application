@@ -27,7 +27,8 @@ class NotificationSendingErrorMessage(Enum):
     telegram_error = "Some error in Telegram API"
     invalid_gmail_token_file = "File 'token.json' is incorrect"
     credentials_refreshing_error = "Credentials could not be refreshed"
-    gmail_client_secret_file_error = "File 'client_secret.json' does not exist or is incorrect"
+    invalid_gmail_client_secret_file = "File 'client_secret.json' is incorrect"
+    gmail_client_secret_file_absence = "File 'client_secret.json' does not exist"
 
 
 def get_user_chat_id_in_telegram():
@@ -67,7 +68,9 @@ def authenticate_and_get_credentials():
                                                                  scopes=GOOGLE_SCOPES)
                 credentials = flow.run_local_server(port=0)
             except ValueError:
-                return None, NotificationSendingErrorMessage.gmail_client_secret_file_error
+                return None, NotificationSendingErrorMessage.invalid_gmail_client_secret_file
+            except FileNotFoundError:
+                return None, NotificationSendingErrorMessage.gmail_client_secret_file_absence
         with open("token.json", "w") as token:
             token.write(credentials.to_json())
     return credentials, None
