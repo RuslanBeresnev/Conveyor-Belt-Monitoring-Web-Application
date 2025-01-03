@@ -8,17 +8,17 @@
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
-4. 
-- Загрузить СУБД PostgreSQL: https://www.postgresql.org/download/
-- При установке можно отметить дополнительный чек-бокс с графической утилитой "pgAdmin 4"
+4. Загрузить СУБД PostgreSQL: https://www.postgresql.org/download/
+
+При установке можно отметить дополнительный чек-бокс с графической утилитой "pgAdmin 4"
 5. Добавить путь до консольной утилиты psql.exe в переменную PATH: ```C:\Program Files\PostgreSQL\17\bin```
 6. Создать базу данных из скрипта DB_creating_script.txt:
 - Через консоль с помощью команды psql
 - Либо в графической утилите "pgAdmin 4"
 7. Заполнить таблицы "objects", "photo", "defects" тестовыми данными
-8.
-- Скачать архив: https://drive.google.com/file/d/1Z5rEbuojpTs-UW7sXqcW73HDqdfr5s5z/view?usp=sharing
-- Ввести пароль доступа для распаковки архива (пароль выдаётся только для проверки производственной практики)
+8. Скачать архив: https://drive.google.com/file/d/1Z5rEbuojpTs-UW7sXqcW73HDqdfr5s5z/view?usp=sharing
+
+Ввести пароль доступа для распаковки архива (пароль выдаётся только для проверки производственной практики)
 9. Поместить файл "client_secret.json" в директорию BeltMonitoringWebApplication - это необходимо для дальнейшей аутентификации через Google для отправки писем с тестового аккаунта
 10. В директории BeltMonitoringWebApplication создать файл ".env" вида:
 ```
