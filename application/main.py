@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from notification_service import router as notification_service_router
-from defect_info_service import router as defect_info_service_router
-from response_models import ServiceInfoResponseModel
+from .notification_service import router as notification_service_router
+from .defect_info_service import router as defect_info_service_router
+from .response_models import ServiceInfoResponseModel
 
 application = FastAPI()
 application.include_router(notification_service_router)

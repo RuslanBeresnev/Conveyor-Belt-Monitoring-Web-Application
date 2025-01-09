@@ -13,8 +13,8 @@ from google.auth.exceptions import RefreshError, DefaultCredentialsError
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from enum import Enum
-from config import Settings
-from response_models import ServiceInfoResponseModel, TelegramNotificationResponseModel, GmailNotificationResponseModel
+from .config import Settings
+from .response_models import ServiceInfoResponseModel, TelegramNotificationResponseModel, GmailNotificationResponseModel
 
 GOOGLE_CLIENT_SECRET_FILE = "client_secret.json"
 GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]

@@ -49,8 +49,10 @@ jobs:
             sleep 5
           done
 
-      - name: Run tests
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+      - name: Create .env file
         run: |
-          pytest
+          echo "TELEGRAM_BOT_TOKEN = \"<any_token>\"" > .env
+          echo "DATABASE_URL = \"postgresql://test_user:test_password@localhost:5432/test_db\"" >> .env
+
+      - name: Run tests
+        run: pytest
