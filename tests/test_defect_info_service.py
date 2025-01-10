@@ -1,8 +1,10 @@
-from fastapi.testclient import TestClient
-from sqlmodel import SQLModel, Session
 from datetime import datetime
 from base64 import b64encode
+
+from fastapi.testclient import TestClient
+from sqlmodel import SQLModel, Session
 import pytest
+
 from application.main import application
 from application.db_models import ObjectType, Object, DefectType, Photo, Defect
 from application.database_connection import engine, settings
@@ -22,6 +24,7 @@ def create_db_tables():
 
 
 def fill_db_with_data():
+    # pylint: disable=R0914
     with Session(engine) as session:
         object_type_for_defect = ObjectType(name="defect")
         object_type_for_conv_state = ObjectType(name="conv_state")
@@ -82,7 +85,7 @@ def fill_db_with_data():
 
 # Защита от изменения production базы данных
 if settings.DATABASE_URL != "postgresql://test_user:test_password@localhost:5432/test_db":
-    raise Exception("ИСПОЛЬЗУЮТСЯ НЕ ТЕСТОВЫЕ ПАРАМЕТРЫ ДЛЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ. "
+    raise ValueError("ИСПОЛЬЗУЮТСЯ НЕ ТЕСТОВЫЕ ПАРАМЕТРЫ ДЛЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ. "
                     "ИЗМЕНИТЕ ПАРАМЕТР \"DATABASE_URL\" В ФАЙЛЕ .env")
 
 create_db_tables()

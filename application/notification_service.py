@@ -1,18 +1,22 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from telegram import Bot
-import telegram.error
 from email.mime.text import MIMEText
-import requests
 from os.path import exists
 from base64 import urlsafe_b64encode
+from enum import Enum
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import requests
+
+from telegram import Bot
+import telegram.error
+
+from google.auth.exceptions import RefreshError, DefaultCredentialsError
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.auth.exceptions import RefreshError, DefaultCredentialsError
-from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
-from enum import Enum
+from googleapiclient.errors import HttpError
+
 from .config import Settings
 from .response_models import ServiceInfoResponseModel, TelegramNotificationResponseModel, GmailNotificationResponseModel
 
@@ -25,14 +29,14 @@ telegram_bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
 
 
 class NotificationSendingErrorMessage(Enum):
-    invalid_bot_token = "Token for Telegram-bot is incorrect"
-    message_from_user_was_long_ago = ("User has not sent a message to the bot for more than a day, "
+    INVALID_BOT_TOKEN = "Token for Telegram-bot is incorrect"
+    MESSAGE_FROM_USER_WAS_LONG_AGO = ("User has not sent a message to the bot for more than a day, "
                                       "so the chat with the user is not registered and has not found")
-    telegram_error = "Some error in Telegram API"
-    invalid_gmail_token_file = "File 'token.json' is incorrect"
-    credentials_refreshing_error = "Credentials could not be refreshed"
-    invalid_gmail_client_secret_file = "File 'client_secret.json' is incorrect"
-    gmail_client_secret_file_absence = "File 'client_secret.json' does not exist"
+    TELEGRAM_ERROR = "Some error in Telegram API"
+    INVALID_GMAIL_TOKEN_FILE = "File 'token.json' is incorrect"
+    CREDENTIALS_REFRESHING_ERROR = "Credentials could not be refreshed"
+    INVALID_GMAIL_CLIENT_SECRET_FILE = "File 'client_secret.json' is incorrect"
+    GMAIL_CLIENT_SECRET_FILE_ABSENCE = "File 'client_secret.json' does not exist"
 
 
 def get_user_chat_id_in_telegram():
@@ -42,13 +46,13 @@ def get_user_chat_id_in_telegram():
     возникновении ошибки.
     """
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getUpdates"
-    response = requests.get(url)
+    response = requests.get(url, timeout=3)
     updates = response.json()
     if not updates["ok"]:
-        return None, NotificationSendingErrorMessage.invalid_bot_token
+        return None, NotificationSendingErrorMessage.INVALID_BOT_TOKEN
     if len(updates["result"]) > 0:
         return updates["result"][-1]["message"]["chat"]["id"], None
-    return None, NotificationSendingErrorMessage.message_from_user_was_long_ago
+    return None, NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO
 
 
 def authenticate_and_get_credentials():
@@ -59,23 +63,23 @@ def authenticate_and_get_credentials():
         try:
             credentials = Credentials.from_authorized_user_file(filename="token.json", scopes=GOOGLE_SCOPES)
         except ValueError:
-            return None, NotificationSendingErrorMessage.invalid_gmail_token_file
+            return None, NotificationSendingErrorMessage.INVALID_GMAIL_TOKEN_FILE
     if not credentials or not credentials.valid:
         if credentials and credentials.expired and credentials.refresh_token:
             try:
                 credentials.refresh(Request())
             except RefreshError:
-                return None, NotificationSendingErrorMessage.credentials_refreshing_error
+                return None, NotificationSendingErrorMessage.CREDENTIALS_REFRESHING_ERROR
         else:
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file=GOOGLE_CLIENT_SECRET_FILE,
                                                                  scopes=GOOGLE_SCOPES)
                 credentials = flow.run_local_server(port=0)
             except ValueError:
-                return None, NotificationSendingErrorMessage.invalid_gmail_client_secret_file
+                return None, NotificationSendingErrorMessage.INVALID_GMAIL_CLIENT_SECRET_FILE
             except FileNotFoundError:
-                return None, NotificationSendingErrorMessage.gmail_client_secret_file_absence
-        with open("token.json", "w") as token:
+                return None, NotificationSendingErrorMessage.GMAIL_CLIENT_SECRET_FILE_ABSENCE
+        with open("token.json", "w", encoding="utf-8") as token:
             token.write(credentials.to_json())
     return credentials, None
 
@@ -99,16 +103,16 @@ def get_service_info():
 
 @router.post("/with_telegram", response_model=TelegramNotificationResponseModel)
 async def send_telegram_notification(notification: TelegramNotification):
-    telegram_notification_error_codes = {NotificationSendingErrorMessage.invalid_bot_token: 500,
-                                         NotificationSendingErrorMessage.message_from_user_was_long_ago: 404}
+    telegram_notification_error_codes = {NotificationSendingErrorMessage.INVALID_BOT_TOKEN: 500,
+                                         NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO: 404}
     user_chat_id, error_message = get_user_chat_id_in_telegram()
     if user_chat_id is None:
         raise HTTPException(status_code=telegram_notification_error_codes[error_message],
                             detail=error_message.value)
     try:
         await telegram_bot.send_message(chat_id=user_chat_id, text=notification.message)
-    except telegram.error.TelegramError:
-        raise HTTPException(status_code=500, detail=NotificationSendingErrorMessage.telegram_error.value)
+    except telegram.error.TelegramError as exception:
+        raise HTTPException(status_code=500, detail=NotificationSendingErrorMessage.TELEGRAM_ERROR.value) from exception
 
     return TelegramNotificationResponseModel(
         notification_method="telegram_notification",
@@ -128,15 +132,15 @@ def send_gmail_notification(notification: GmailNotification):
         raise HTTPException(status_code=403, detail=error_message.value)
     try:
         gmail_service = build(serviceName="gmail", version="v1", credentials=credentials)
-    except DefaultCredentialsError:
-        raise HTTPException(status_code=403, detail="Credentials not found or incorrect")
+    except DefaultCredentialsError as exception:
+        raise HTTPException(status_code=403, detail="Credentials not found or incorrect") from exception
     try:
-        sent_message = gmail_service.users().messages().send(userId="me", body=formatted_message).execute()
-        print(gmail_service.users())
+        # pylint: disable=E1101
+        gmail_service.users().messages().send(userId="me", body=formatted_message).execute()
     except HttpError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.error_details)
-    except TypeError:
-        raise HTTPException(status_code=500, detail="Invalid message format")
+        raise HTTPException(status_code=e.status_code, detail=e.error_details) from e
+    except TypeError as e:
+        raise HTTPException(status_code=500, detail="Invalid message format") from e
 
     return GmailNotificationResponseModel(
         notification_method="gmail_notification",

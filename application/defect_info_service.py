@@ -1,6 +1,8 @@
+from base64 import b64encode
+
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select
-from base64 import b64encode
+
 from .database_connection import engine
 from .db_models import Defect, DefectType
 from .response_models import ServiceInfoResponseModel, DefectResponseModel
@@ -54,7 +56,7 @@ def get_defects_of_certain_type(defect_type: str):
         if not results:
             raise HTTPException(status_code=404, detail=f"There is no defects of type '{defect_type}'")
         response = []
-        for defect, defect_type in results:
+        for defect, _ in results:
             response.append(form_response_model_from_defect(defect))
         return response
 
@@ -64,7 +66,7 @@ def get_critical_defects():
     with Session(engine) as session:
         defects = session.exec(select(Defect).where(Defect.is_critical)).all()
         if not defects:
-            raise HTTPException(status_code=404, detail=f"There is no critical-level defects")
+            raise HTTPException(status_code=404, detail="There is no critical-level defects")
         response = []
         for defect in defects:
             response.append(form_response_model_from_defect(defect))
@@ -76,7 +78,7 @@ def get_extreme_defects():
     with Session(engine) as session:
         defects = session.exec(select(Defect).where(Defect.is_extreme)).all()
         if not defects:
-            raise HTTPException(status_code=404, detail=f"There is no extreme-level defects")
+            raise HTTPException(status_code=404, detail="There is no extreme-level defects")
         response = []
         for defect in defects:
             response.append(form_response_model_from_defect(defect))

@@ -1,5 +1,6 @@
-from sqlmodel import SQLModel, Field, Column, Relationship, Integer, TEXT, DateTime, LargeBinary
 from datetime import datetime
+
+from sqlmodel import SQLModel, Field, Column, Relationship, Integer, TEXT, DateTime, LargeBinary
 
 
 class ObjectType(SQLModel, table=True):

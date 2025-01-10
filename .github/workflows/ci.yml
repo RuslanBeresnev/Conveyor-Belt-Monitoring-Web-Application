@@ -54,5 +54,8 @@ jobs:
           echo TELEGRAM_BOT_TOKEN = \"test_token\" > .env
           echo DATABASE_URL = \"postgresql://test_user:test_password@localhost:5432/test_db\" >> .env
 
+      - name: Run linter
+        run: pylint ./**/*.py --disable=C0301,C0114,C0115,C0116
+
       - name: Run tests
         run: pytest

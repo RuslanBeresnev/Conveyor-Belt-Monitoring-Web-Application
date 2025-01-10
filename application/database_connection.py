@@ -1,4 +1,5 @@
 from sqlmodel import create_engine
+
 from .config import Settings
 
 settings = Settings()
