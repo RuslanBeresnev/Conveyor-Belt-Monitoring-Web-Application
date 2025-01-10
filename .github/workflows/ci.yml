@@ -55,4 +55,4 @@ jobs:
           echo DATABASE_URL = \"postgresql://test_user:test_password@localhost:5432/test_db\" >> .env
 
       - name: Run tests
-        run: pytest .\tests\
+        run: pytest
