@@ -83,10 +83,11 @@ def fill_db_with_data():
 
         session.commit()
 
+
 # Защита от изменения production базы данных
 if settings.DATABASE_URL != "postgresql://test_user:test_password@localhost:5432/test_db":
     raise ValueError("ИСПОЛЬЗУЮТСЯ НЕ ТЕСТОВЫЕ ПАРАМЕТРЫ ДЛЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ. "
-                    "ИЗМЕНИТЕ ПАРАМЕТР \"DATABASE_URL\" В ФАЙЛЕ .env")
+                     "ИЗМЕНИТЕ ПАРАМЕТР \"DATABASE_URL\" В ФАЙЛЕ .env")
 
 create_db_tables()
 fill_db_with_data()
