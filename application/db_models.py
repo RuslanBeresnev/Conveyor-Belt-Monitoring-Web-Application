@@ -96,3 +96,11 @@ class Relation(SQLModel, table=True):
                                                  back_populates="current_defect_in_relation")
     previous_defect_object: Defect = Relationship(sa_relationship_kwargs=dict(foreign_keys="[Relation.id_previous]"),
                                                   back_populates="previous_defect_in_relation")
+
+
+class ConveyorParameters(SQLModel, table=True):
+    __tablename__ = "conv"
+    id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
+    belt_length: int = Field(default=17360000, nullable=False)
+    belt_width: int = Field(default=336000, nullable=False)
+    belt_thickness: int = Field(default=630, nullable=False)

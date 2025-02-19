@@ -32,3 +32,9 @@ class DefectResponseModel(BaseModel):
     is_critical: bool
     is_extreme: bool
     base64_photo: str  # from Photo model (converted to base64 format)
+
+
+class ConveyorParametersResponseModel(BaseModel):
+    belt_length: int
+    belt_width: int
+    belt_thickness: int
