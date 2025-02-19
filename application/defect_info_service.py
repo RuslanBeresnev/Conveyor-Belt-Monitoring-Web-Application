@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select
 
 from .database_connection import engine
-from .db_models import Defect, DefectType
+from .db_models import Defect, DefectType, Relation
 from .response_models import ServiceInfoResponseModel, DefectResponseModel
 
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
@@ -82,4 +82,34 @@ def get_extreme_defects():
         response = []
         for defect in defects:
             response.append(form_response_model_from_defect(defect))
+        return response
+
+
+@router.get(path="/id={current_defect_id}/previous", response_model=DefectResponseModel)
+def get_previous_variation_of_defect_by_id_of_current_one(current_defect_id: int):
+    with Session(engine) as session:
+        current_defect = session.exec(select(Relation).where(Relation.id_current == current_defect_id)).first()
+        if not current_defect:
+            raise HTTPException(status_code=404, detail=f"There is no defect with id={current_defect_id} "
+                                                        f"or previous variations for it")
+        previous_defect = current_defect.previous_defect_object
+        response = form_response_model_from_defect(previous_defect)
+        return response
+
+
+@router.get(path="/id={current_defect_id}/chain_of_previous", response_model=list[DefectResponseModel])
+def get_chain_of_all_previous_variations_of_defect_by_id(current_defect_id: int):
+    with Session(engine) as session:
+        current_defect = session.exec(select(Relation).where(Relation.id_current == current_defect_id)).first()
+        if not current_defect:
+            raise HTTPException(status_code=404, detail=f"There is no defect with id={current_defect_id} "
+                                                        f"or previous variations for it")
+
+        response = []
+        previous_defect = current_defect.previous_defect_object
+        while True:
+            response.append(form_response_model_from_defect(previous_defect))
+            if not previous_defect.current_defect_in_relation:
+                break
+            previous_defect = previous_defect.current_defect_in_relation.previous_defect_object
         return response

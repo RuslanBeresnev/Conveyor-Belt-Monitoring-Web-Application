@@ -18,10 +18,13 @@ class Object(SQLModel, table=True):
     time: datetime = Field(sa_column=Column(DateTime(timezone=False), nullable=False))
 
     type_object: ObjectType = Relationship(back_populates="objects")
-    defect: list["Defect"] = Relationship(sa_relationship_kwargs={"uselist": False}, back_populates="base_object",
-                                          cascade_delete=True)
-    photo: list["Photo"] = Relationship(sa_relationship_kwargs={"uselist": False}, back_populates="base_object",
-                                        cascade_delete=True)
+
+    # 1:1 relation
+    defect: "Defect" = Relationship(sa_relationship_kwargs=dict(uselist=False), back_populates="base_object",
+                                    cascade_delete=True)
+    # 1:1 relation
+    photo: "Photo" = Relationship(sa_relationship_kwargs=dict(uselist=False), back_populates="base_object",
+                                  cascade_delete=True)
 
 
 class DefectType(SQLModel, table=True):
@@ -69,3 +72,27 @@ class Defect(SQLModel, table=True):
     base_object: Object = Relationship(back_populates="defect")
     type_object: DefectType = Relationship(back_populates="defects")
     photo_object: Photo = Relationship(back_populates="defects")
+
+    # Link to the object of this defect in Relation table (1:1 relation)
+    current_defect_in_relation: "Relation" = (
+        Relationship(sa_relationship_kwargs=dict(uselist=False, foreign_keys="[Relation.id_current]"),
+                     back_populates="current_defect_object", cascade_delete=True))
+    # Link to the object of previous defect for this in Relation table (1:1 relation)
+    previous_defect_in_relation: "Relation" = (
+        Relationship(sa_relationship_kwargs=dict(uselist=False, foreign_keys="[Relation.id_previous]"),
+                     back_populates="previous_defect_object", cascade_delete=True))
+
+
+class Relation(SQLModel, table=True):
+    """
+    This table implements the chain of variations for the one defect
+    (essentially a singly linked list for observing defect progression)
+    """
+    __tablename__ = "relation"
+    id_current: int = Field(foreign_key="defects.id", primary_key=True, nullable=False, ondelete="CASCADE")
+    id_previous: int = Field(foreign_key="defects.id", primary_key=True, nullable=False, ondelete="CASCADE")
+
+    current_defect_object: Defect = Relationship(sa_relationship_kwargs=dict(foreign_keys="[Relation.id_current]"),
+                                                 back_populates="current_defect_in_relation")
+    previous_defect_object: Defect = Relationship(sa_relationship_kwargs=dict(foreign_keys="[Relation.id_previous]"),
+                                                  back_populates="previous_defect_in_relation")
