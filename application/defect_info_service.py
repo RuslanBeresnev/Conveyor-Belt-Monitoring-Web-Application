@@ -113,3 +113,20 @@ def get_chain_of_all_previous_variations_of_defect_by_id(current_defect_id: int)
                 break
             previous_defect = previous_defect.current_defect_in_relation.previous_defect_object
         return response
+
+
+@router.put(path="/id={defect_id}/set_criticality", response_model=DefectResponseModel)
+def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_critical: bool):
+    with Session(engine) as session:
+        defect = session.exec(select(Defect).where(Defect.id == defect_id)).first()
+        if not defect:
+            raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
+
+        defect.is_extreme = is_extreme
+        defect.is_critical = is_critical
+        session.add(defect)
+        session.commit()
+        session.refresh(defect)
+
+        response = form_response_model_from_defect(defect)
+        return response
