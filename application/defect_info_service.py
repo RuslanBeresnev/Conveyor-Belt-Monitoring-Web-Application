@@ -109,6 +109,24 @@ def get_chain_of_all_previous_variations_of_defect_by_id(current_defect_id: int)
         return response
 
 
+def create_record_of_current_conveyor_status(session: Session):
+    base_object_for_new_conv_status = Object()
+    conv_status_object_type = session.exec(select(ObjectType).where(ObjectType.name == "conv_state")).one()
+    base_object_for_new_conv_status.type_object = conv_status_object_type
+    current_conv_status = ConveyorStatus()
+    current_conv_status.base_object = base_object_for_new_conv_status
+
+    if len(get_critical_defects()) > 0:
+        current_conv_status.is_critical = True
+    elif len(get_extreme_defects()) > 0:
+        current_conv_status.is_extreme = True
+
+    session.add(current_conv_status)
+    session.commit()
+    session.refresh(current_conv_status)
+    return current_conv_status
+
+
 @router.put(path="/id={defect_id}/set_criticality", response_model=DefectResponseModel)
 def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_critical: bool):
     with Session(engine) as session:
@@ -131,23 +149,36 @@ def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_crit
         session.commit()
         session.refresh(defect)
 
-        # Defect criticality changing causes changing of the general conveyor status (creating new record
-        # in ConveyorStatus() model)
-
-        base_object_for_new_conv_status = Object()
-        conv_status_object_type = session.exec(select(ObjectType).where(ObjectType.name == "conv_state")).one()
-        base_object_for_new_conv_status.type_object = conv_status_object_type
-        current_conv_status = ConveyorStatus()
-        current_conv_status.base_object = base_object_for_new_conv_status
-
-        if len(get_critical_defects()) > 0:
-            current_conv_status.is_critical = True
-        elif len(get_extreme_defects()) > 0:
-            current_conv_status.is_extreme = True
-
-        session.add(current_conv_status)
-        session.commit()
-        session.refresh(current_conv_status)
+        # Defect criticality changing causes changing of the general conveyor status
+        create_record_of_current_conveyor_status(session)
 
         response = form_response_model_from_defect(defect)
+        return response
+
+
+@router.delete(path="/id={defect_id}/delete", response_model=DefectResponseModel)
+def delete_defect_by_id(defect_id: int):
+    with Session(engine) as session:
+        defect = session.exec(select(Defect).where(Defect.id == defect_id)).first()
+        if not defect:
+            raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
+        response = form_response_model_from_defect(defect)
+
+        # Defect removing causes changing of defect variations chain
+        next_variation_of_defect = session.exec(select(Relation).where(Relation.id_previous == defect_id)).one()
+        if next_variation_of_defect:
+            next_variation_of_defect.previous_defect_object = defect.current_defect_in_relation.previous_defect_object
+
+        # Within one photo can be two defects so that photo deletion make sense if there is only one defect in the photo
+        if len(defect.photo_object.defects) == 1:
+            # Link to the photo object so that "ON CASCADE" deletion does not remove the entire defect
+            photo_object = defect.photo_object
+            defect.photo_object = None
+            session.delete(photo_object.base_object)
+        session.delete(defect.base_object)
+        session.commit()
+
+        # Defect removing causes changing of the general conveyor status
+        create_record_of_current_conveyor_status(session)
+
         return response
