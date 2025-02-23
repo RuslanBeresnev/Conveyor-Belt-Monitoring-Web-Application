@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select
 
 from .database_connection import engine
-from .db_models import Defect, DefectType, Relation
+from .db_models import ObjectType, Object, DefectType, Defect, Relation, ConveyorStatus
 from .response_models import ServiceInfoResponseModel, DefectResponseModel
 
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
@@ -53,8 +53,6 @@ def get_defects_of_certain_type(defect_type: str):
     with Session(engine) as session:
         results = session.exec(select(Defect, DefectType).join(DefectType).
                                where(DefectType.name == defect_type)).all()
-        if not results:
-            raise HTTPException(status_code=404, detail=f"There is no defects of type '{defect_type}'")
         response = []
         for defect, _ in results:
             response.append(form_response_model_from_defect(defect))
@@ -65,8 +63,6 @@ def get_defects_of_certain_type(defect_type: str):
 def get_critical_defects():
     with Session(engine) as session:
         defects = session.exec(select(Defect).where(Defect.is_critical)).all()
-        if not defects:
-            raise HTTPException(status_code=404, detail="There is no critical-level defects")
         response = []
         for defect in defects:
             response.append(form_response_model_from_defect(defect))
@@ -77,8 +73,6 @@ def get_critical_defects():
 def get_extreme_defects():
     with Session(engine) as session:
         defects = session.exec(select(Defect).where(Defect.is_extreme)).all()
-        if not defects:
-            raise HTTPException(status_code=404, detail="There is no extreme-level defects")
         response = []
         for defect in defects:
             response.append(form_response_model_from_defect(defect))
@@ -122,11 +116,38 @@ def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_crit
         if not defect:
             raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
 
-        defect.is_extreme = is_extreme
-        defect.is_critical = is_critical
+        if defect.is_extreme == is_extreme and defect.is_critical == is_critical:
+            response = form_response_model_from_defect(defect)
+            return response
+        # Processing case of mutually exclusive values defining
+        if is_extreme and is_critical:
+            defect.is_extreme = False
+            defect.is_critical = True
+        else:
+            defect.is_extreme = is_extreme
+            defect.is_critical = is_critical
+
         session.add(defect)
         session.commit()
         session.refresh(defect)
+
+        # Defect criticality changing causes changing of the general conveyor status (creating new record
+        # in ConveyorStatus() model)
+
+        base_object_for_new_conv_status = Object()
+        conv_status_object_type = session.exec(select(ObjectType).where(ObjectType.name == "conv_state")).one()
+        base_object_for_new_conv_status.type_object = conv_status_object_type
+        current_conv_status = ConveyorStatus()
+        current_conv_status.base_object = base_object_for_new_conv_status
+
+        if len(get_critical_defects()) > 0:
+            current_conv_status.is_critical = True
+        elif len(get_extreme_defects()) > 0:
+            current_conv_status.is_extreme = True
+
+        session.add(current_conv_status)
+        session.commit()
+        session.refresh(current_conv_status)
 
         response = form_response_model_from_defect(defect)
         return response

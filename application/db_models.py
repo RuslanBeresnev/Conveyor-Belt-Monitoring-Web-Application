@@ -15,7 +15,7 @@ class Object(SQLModel, table=True):
     __tablename__ = "objects"
     id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
     type: int = Field(foreign_key="object_type.id", nullable=False, ondelete="CASCADE")
-    time: datetime = Field(sa_column=Column(DateTime(timezone=False), nullable=False))
+    time: datetime = Field(sa_column=Column(DateTime(timezone=False), default=datetime.now(), nullable=False))
 
     type_object: ObjectType = Relationship(back_populates="objects")
 
@@ -25,6 +25,9 @@ class Object(SQLModel, table=True):
     # 1:1 relation
     photo: "Photo" = Relationship(sa_relationship_kwargs=dict(uselist=False), back_populates="base_object",
                                   cascade_delete=True)
+    # 1:1 relation
+    conveyor_status: "ConveyorStatus" = Relationship(sa_relationship_kwargs=dict(uselist=False),
+                                                     back_populates="base_object", cascade_delete=True)
 
 
 class DefectType(SQLModel, table=True):
@@ -104,3 +107,13 @@ class ConveyorParameters(SQLModel, table=True):
     belt_length: int = Field(default=17360000, nullable=False)
     belt_width: int = Field(default=336000, nullable=False)
     belt_thickness: int = Field(default=630, nullable=False)
+
+
+class ConveyorStatus(SQLModel, table=True):
+    __tablename__ = "state_of_conv"
+    id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
+    id_obj: int = Field(foreign_key="objects.id", nullable=False, ondelete="CASCADE")
+    is_critical: bool = Field(default=False, nullable=False)
+    is_extreme: bool = Field(default=False, nullable=False)
+
+    base_object: Object = Relationship(back_populates="conveyor_status")

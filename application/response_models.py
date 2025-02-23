@@ -38,3 +38,9 @@ class ConveyorParametersResponseModel(BaseModel):
     belt_length: int
     belt_width: int
     belt_thickness: int
+
+
+class ConveyorStatusResponseModel(BaseModel):
+    is_normal: bool
+    is_extreme: bool
+    is_critical: bool
