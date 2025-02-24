@@ -1,7 +1,8 @@
 from base64 import b64encode
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, select, and_
 
 from .database_connection import engine
 from .db_models import ObjectType, Object, DefectType, Defect, Relation, ConveyorStatus
@@ -85,6 +86,19 @@ def get_extreme_defects():
         defects = session.exec(select(Defect).where(Defect.is_extreme)).all()
         response = []
         for defect in defects:
+            response.append(form_response_model_from_defect(defect))
+        return response
+
+
+@router.get(path="/by_period", response_model=list[DefectResponseModel])
+def get_all_defects_in_certain_time_period(start_datetime: datetime = datetime.fromtimestamp(0),
+                                           end_datetime: datetime = datetime.now()):
+    with Session(engine) as session:
+        results = session.exec(select(Defect, Object).join(Object).
+                               where(and_(start_datetime <= Object.time, Object.time <= end_datetime))
+                               .order_by(Defect.id)).all()
+        response = []
+        for defect, _ in results:
             response.append(form_response_model_from_defect(defect))
         return response
 
