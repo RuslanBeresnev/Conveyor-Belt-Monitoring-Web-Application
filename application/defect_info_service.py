@@ -38,6 +38,16 @@ def get_service_info():
     )
 
 
+@router.get(path="/all", response_model=list[DefectResponseModel])
+def get_all_defects():
+    with Session(engine) as session:
+        defects = session.exec(select(Defect).order_by(Defect.id)).all()
+        response = []
+        for defect in defects:
+            response.append(form_response_model_from_defect(defect))
+        return response
+
+
 @router.get(path="/id={defect_id}", response_model=DefectResponseModel)
 def get_defect_by_id(defect_id: int):
     with Session(engine) as session:
