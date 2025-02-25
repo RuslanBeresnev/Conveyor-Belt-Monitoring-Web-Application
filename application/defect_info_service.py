@@ -43,10 +43,7 @@ def get_service_info():
 def get_all_defects():
     with Session(engine) as session:
         defects = session.exec(select(Defect).order_by(Defect.id)).all()
-        response = []
-        for defect in defects:
-            response.append(form_response_model_from_defect(defect))
-        return response
+        return [form_response_model_from_defect(defect) for defect in defects]
 
 
 @router.get(path="/id={defect_id}", response_model=DefectResponseModel)
@@ -64,30 +61,21 @@ def get_defects_of_certain_type(defect_type: str):
     with Session(engine) as session:
         results = session.exec(select(Defect, DefectType).join(DefectType).
                                where(DefectType.name == defect_type)).all()
-        response = []
-        for defect, _ in results:
-            response.append(form_response_model_from_defect(defect))
-        return response
+        return [form_response_model_from_defect(defect) for defect, _ in results]
 
 
 @router.get(path="/critical", response_model=list[DefectResponseModel])
 def get_critical_defects():
     with Session(engine) as session:
         defects = session.exec(select(Defect).where(Defect.is_critical)).all()
-        response = []
-        for defect in defects:
-            response.append(form_response_model_from_defect(defect))
-        return response
+        return [form_response_model_from_defect(defect) for defect in defects]
 
 
 @router.get(path="/extreme", response_model=list[DefectResponseModel])
 def get_extreme_defects():
     with Session(engine) as session:
         defects = session.exec(select(Defect).where(Defect.is_extreme)).all()
-        response = []
-        for defect in defects:
-            response.append(form_response_model_from_defect(defect))
-        return response
+        return [form_response_model_from_defect(defect) for defect in defects]
 
 
 @router.get(path="/by_period", response_model=list[DefectResponseModel])
@@ -97,10 +85,7 @@ def get_all_defects_in_certain_time_period(start_datetime: datetime = datetime.f
         results = session.exec(select(Defect, Object).join(Object).
                                where(and_(start_datetime <= Object.time, Object.time <= end_datetime))
                                .order_by(Defect.id)).all()
-        response = []
-        for defect, _ in results:
-            response.append(form_response_model_from_defect(defect))
-        return response
+        return [form_response_model_from_defect(defect) for defect, _ in results]
 
 
 @router.get(path="/id={current_defect_id}/previous", response_model=DefectResponseModel)
