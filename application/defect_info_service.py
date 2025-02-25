@@ -1,5 +1,5 @@
 from base64 import b64encode
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select, and_
@@ -79,8 +79,9 @@ def get_extreme_defects():
 
 
 @router.get(path="/by_period", response_model=list[DefectResponseModel])
-def get_all_defects_in_certain_time_period(start_datetime: datetime = datetime.fromtimestamp(0),
-                                           end_datetime: datetime = datetime.now()):
+def get_all_defects_in_certain_time_period(start_datetime: datetime = datetime.fromtimestamp(0, timezone.utc)
+                                           .replace(tzinfo=None),
+                                           end_datetime: datetime = datetime.now(timezone.utc).replace(tzinfo=None)):
     with Session(engine) as session:
         results = session.exec(select(Defect, Object).join(Object).
                                where(and_(start_datetime <= Object.time, Object.time <= end_datetime))

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import SQLModel, Field, Column, Relationship, Integer, TEXT, DateTime, LargeBinary
 
@@ -15,7 +15,8 @@ class Object(SQLModel, table=True):
     __tablename__ = "objects"
     id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
     type: int = Field(foreign_key="object_type.id", nullable=False, ondelete="CASCADE")
-    time: datetime = Field(sa_column=Column(DateTime(timezone=False), default=datetime.now(), nullable=False))
+    time: datetime = Field(sa_column=Column(DateTime(timezone=False),
+                                            default=datetime.now(timezone.utc).replace(tzinfo=None), nullable=False))
 
     type_object: ObjectType = Relationship(back_populates="objects")
 
