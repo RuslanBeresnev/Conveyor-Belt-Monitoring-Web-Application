@@ -1,5 +1,7 @@
+import math
+
 from fastapi import APIRouter, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, select, desc
 
 from .database_connection import engine
 from .db_models import LogType, Log
@@ -36,3 +38,14 @@ def get_log_by_id(log_id: int):
             raise HTTPException(status_code=404, detail=f"There is no log record with id={log_id}")
         response = form_response_model_from_log(log)
         return response
+
+
+@router.get(path="/latest", response_model=list[LogResponseModel])
+def get_latest_log_records_within_count_limit(limit: int = None):
+    with Session(engine) as session:
+        if not limit:
+            logs = session.exec(select(Log).order_by(Log.id)).all()
+        else:
+            logs = session.exec(select(Log).order_by(desc(Log.id)).limit(limit)).all()
+            logs = sorted(logs, key=lambda log: log.id)
+        return [form_response_model_from_log(log) for log in logs]
