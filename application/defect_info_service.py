@@ -59,22 +59,22 @@ def get_defect_by_id(defect_id: int):
 @router.get(path="/type={defect_type}", response_model=list[DefectResponseModel])
 def get_defects_of_certain_type(defect_type: str):
     with Session(engine) as session:
-        results = session.exec(select(Defect, DefectType).join(DefectType).
-                               where(DefectType.name == defect_type)).all()
+        results = session.exec(select(Defect, DefectType).join(DefectType).where(DefectType.name == defect_type).
+                               order_by(Defect.id)).all()
         return [form_response_model_from_defect(defect) for defect, _ in results]
 
 
 @router.get(path="/critical", response_model=list[DefectResponseModel])
 def get_critical_defects():
     with Session(engine) as session:
-        defects = session.exec(select(Defect).where(Defect.is_critical)).all()
+        defects = session.exec(select(Defect).where(Defect.is_critical).order_by(Defect.id)).all()
         return [form_response_model_from_defect(defect) for defect in defects]
 
 
 @router.get(path="/extreme", response_model=list[DefectResponseModel])
 def get_extreme_defects():
     with Session(engine) as session:
-        defects = session.exec(select(Defect).where(Defect.is_extreme)).all()
+        defects = session.exec(select(Defect).where(Defect.is_extreme).order_by(Defect.id)).all()
         return [form_response_model_from_defect(defect) for defect in defects]
 
 

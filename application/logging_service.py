@@ -52,7 +52,8 @@ def get_latest_log_records_within_count_limit(limit: int = None):
 @router.get(path="/type={log_type}", response_model=list[LogResponseModel])
 def get_log_records_of_certain_type(log_type: str):
     with Session(engine) as session:
-        results = session.exec(select(Log, LogType).join(LogType).where(LogType.name == log_type)).all()
+        results = session.exec(select(Log, LogType).join(LogType).where(LogType.name == log_type).
+                               order_by(Log.id)).all()
         return [form_response_model_from_log(log) for log, _ in results]
 
 
