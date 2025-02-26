@@ -31,7 +31,7 @@ def get_service_info():
 
 
 @router.get(path="/id={log_id}", response_model=LogResponseModel)
-def get_log_by_id(log_id: int):
+def get_log_record_by_id(log_id: int):
     with Session(engine) as session:
         log = session.exec(select(Log).where(Log.id == log_id)).first()
         if not log:
@@ -49,3 +49,10 @@ def get_latest_log_records_within_count_limit(limit: int = None):
             logs = session.exec(select(Log).order_by(desc(Log.id)).limit(limit)).all()
             logs = sorted(logs, key=lambda log: log.id)
         return [form_response_model_from_log(log) for log in logs]
+
+
+@router.get(path="/type={log_type}", response_model=list[LogResponseModel])
+def get_log_records_of_certain_type(log_type: str):
+    with Session(engine) as session:
+        results = session.exec(select(Log, LogType).join(LogType).where(LogType.name == log_type)).all()
+        return [form_response_model_from_log(log) for log, _ in results]
