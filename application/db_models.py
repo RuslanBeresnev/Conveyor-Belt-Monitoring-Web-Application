@@ -29,6 +29,9 @@ class Object(SQLModel, table=True):
     # 1:1 relation
     conveyor_status: "ConveyorStatus" = Relationship(sa_relationship_kwargs=dict(uselist=False),
                                                      back_populates="base_object", cascade_delete=True)
+    # 1:1 relation
+    log: "Log" = Relationship(sa_relationship_kwargs=dict(uselist=False), back_populates="base_object",
+                              cascade_delete=True)
 
 
 class DefectType(SQLModel, table=True):
@@ -118,3 +121,22 @@ class ConveyorStatus(SQLModel, table=True):
     is_extreme: bool = Field(default=False, nullable=False)
 
     base_object: Object = Relationship(back_populates="conveyor_status")
+
+
+class LogType(SQLModel, table=True):
+    __tablename__ = "history_type"
+    id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
+    name: str = Field(nullable=False)
+
+    logs: list["Log"] = Relationship(back_populates="type_object", cascade_delete=True)
+
+
+class Log(SQLModel, table=True):
+    __tablename__ = "history"
+    id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
+    id_obj: int = Field(foreign_key="objects.id", nullable=False, ondelete="CASCADE")
+    action: str = Field(nullable=False)
+    type: int = Field(foreign_key="history_type.id", nullable=False, ondelete="CASCADE")
+
+    base_object: Object = Relationship(back_populates="log")
+    type_object: LogType = Relationship(back_populates="logs")

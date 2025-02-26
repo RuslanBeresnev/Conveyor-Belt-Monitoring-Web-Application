@@ -44,3 +44,10 @@ class ConveyorStatusResponseModel(BaseModel):
     is_normal: bool
     is_extreme: bool
     is_critical: bool
+
+
+class LogResponseModel(BaseModel):
+    id: int
+    timestamp: datetime  # from Object model
+    type: str  # parameter "name" from LogType model
+    text: str  # parameter "action" from Log model
