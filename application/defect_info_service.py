@@ -1,5 +1,6 @@
 from base64 import b64encode
 from datetime import datetime, timezone
+import requests
 
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select, and_
@@ -119,29 +120,6 @@ def get_chain_of_all_previous_variations_of_defect_by_id(current_defect_id: int)
         return response
 
 
-def create_record_of_current_conveyor_status(session: Session):
-    base_object_for_new_conv_status = Object()
-    conv_status_object_type = session.exec(select(ObjectType).where(ObjectType.name == "conv_state")).one()
-    base_object_for_new_conv_status.type_object = conv_status_object_type
-    current_conv_status = ConveyorStatus()
-    current_conv_status.base_object = base_object_for_new_conv_status
-
-    if len(get_critical_defects()) > 0:
-        current_conv_status.is_extreme = False
-        current_conv_status.is_critical = True
-    elif len(get_extreme_defects()) > 0:
-        current_conv_status.is_extreme = True
-        current_conv_status.is_critical = False
-    else:
-        current_conv_status.is_extreme = False
-        current_conv_status.is_critical = False
-
-    session.add(current_conv_status)
-    session.commit()
-    session.refresh(current_conv_status)
-    return current_conv_status
-
-
 @router.put(path="/id={defect_id}/set_criticality", response_model=DefectResponseModel)
 def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_critical: bool):
     with Session(engine) as session:
@@ -165,7 +143,7 @@ def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_crit
         session.refresh(defect)
 
         # Defect criticality changing causes changing of the general conveyor status
-        create_record_of_current_conveyor_status(session)
+        requests.post("http://127.0.0.1:8000/conveyor_info/create_record")
 
         response = form_response_model_from_defect(defect)
         return response
@@ -194,6 +172,6 @@ def delete_defect_by_id(defect_id: int):
         session.commit()
 
         # Defect removing causes changing of the general conveyor status
-        create_record_of_current_conveyor_status(session)
+        requests.post("http://127.0.0.1:8000/conveyor_info/create_record")
 
         return response
