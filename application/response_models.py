@@ -9,6 +9,7 @@ class ServiceInfoResponseModel(BaseModel):
 
 class TelegramNotificationResponseModel(BaseModel):
     notification_method: str
+    to_user: str
     sent_message: str
 
 

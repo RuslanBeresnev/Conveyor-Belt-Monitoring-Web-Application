@@ -41,18 +41,19 @@ class NotificationSendingErrorMessage(Enum):
 
 def get_user_chat_id_in_telegram():
     """
-    Returns a pair (id, error_message), where id is the id of the Telegram chat with the user who last sent a message
-    to the bot (the message must be sent during the day before server launch), error_message gives information
-    in the case of emergency situation.
+    Returns a pair (<id>, <username>, <error_message>), where <id> is the id of the Telegram chat with the user who last
+    sent a message to the bot (the message must be sent during the day before server launch), <username> is unique user
+    nick seems like "@test_user" (without '@'), <error_message> gives information in the case of emergency situation.
     """
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getUpdates"
     response = requests.get(url, timeout=3)
     updates = response.json()
     if not updates["ok"]:
-        return None, NotificationSendingErrorMessage.INVALID_BOT_TOKEN
+        return None, None, NotificationSendingErrorMessage.INVALID_BOT_TOKEN
     if len(updates["result"]) > 0:
-        return updates["result"][-1]["message"]["chat"]["id"], None
-    return None, NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO
+        return (updates["result"][-1]["message"]["chat"]["id"], updates["result"][-1]["message"]["chat"]["username"],
+                None)
+    return None, None, NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO
 
 
 def authenticate_and_get_credentials():
@@ -106,7 +107,7 @@ def get_service_info():
 async def send_telegram_notification(notification: TelegramNotification):
     telegram_notification_error_codes = {NotificationSendingErrorMessage.INVALID_BOT_TOKEN: 500,
                                          NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO: 404}
-    user_chat_id, error_message = get_user_chat_id_in_telegram()
+    user_chat_id, username, error_message = get_user_chat_id_in_telegram()
     if user_chat_id is None:
         raise HTTPException(status_code=telegram_notification_error_codes[error_message],
                             detail=error_message.value)
@@ -117,6 +118,7 @@ async def send_telegram_notification(notification: TelegramNotification):
 
     return TelegramNotificationResponseModel(
         notification_method="telegram_notification",
+        to_user='@' + username,
         sent_message=notification.message
     )
 
