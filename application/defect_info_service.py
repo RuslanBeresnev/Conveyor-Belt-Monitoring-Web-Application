@@ -127,9 +127,14 @@ def create_record_of_current_conveyor_status(session: Session):
     current_conv_status.base_object = base_object_for_new_conv_status
 
     if len(get_critical_defects()) > 0:
+        current_conv_status.is_extreme = False
         current_conv_status.is_critical = True
     elif len(get_extreme_defects()) > 0:
         current_conv_status.is_extreme = True
+        current_conv_status.is_critical = False
+    else:
+        current_conv_status.is_extreme = False
+        current_conv_status.is_critical = False
 
     session.add(current_conv_status)
     session.commit()
@@ -144,13 +149,13 @@ def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_crit
         if not defect:
             raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
 
+        # Processing case of mutually exclusive values defining
+        if is_extreme and is_critical:
+            is_extreme = False
+            is_critical = True
         if defect.is_extreme == is_extreme and defect.is_critical == is_critical:
             response = form_response_model_from_defect(defect)
             return response
-        # Processing case of mutually exclusive values defining
-        if is_extreme and is_critical:
-            defect.is_extreme = False
-            defect.is_critical = True
         else:
             defect.is_extreme = is_extreme
             defect.is_critical = is_critical
