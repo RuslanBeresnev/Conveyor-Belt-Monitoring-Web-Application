@@ -41,9 +41,9 @@ class NotificationSendingErrorMessage(Enum):
 
 def get_user_chat_id_in_telegram():
     """
-    Возвращает пару (id, error_message), где id - id Telegram-чата с пользователем, который последним отправил сообщение
-    боту (сообщение должно быть отправлено в течение суток до запуска серверe), а error_message - сообщение при
-    возникновении ошибки.
+    Returns a pair (id, error_message), where id is the id of the Telegram chat with the user who last sent a message
+    to the bot (the message must be sent during the day before server launch), error_message gives information
+    in the case of emergency situation.
     """
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getUpdates"
     response = requests.get(url, timeout=3)
@@ -56,8 +56,9 @@ def get_user_chat_id_in_telegram():
 
 
 def authenticate_and_get_credentials():
-    """Аутентификация в Gmail с помощью OAuth 2.0 (срок годности токена истекает через час после
-    первой аутентификации)"""
+    """
+    Gmail authentication using OAuth 2.0 (token expires in one hour after first authentication)
+    """
     credentials = None
     if exists("token.json"):
         try:
