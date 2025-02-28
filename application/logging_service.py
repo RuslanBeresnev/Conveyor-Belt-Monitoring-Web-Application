@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select, desc, text
 
 from .database_connection import engine
-from .db_models import LogType, Log
+from .db_models import ObjectType, Object, LogType, Log
 from .response_models import ServiceInfoResponseModel, LogResponseModel, AllLogsRemovingResponseModel
 
 router = APIRouter(prefix="/logs", tags=["Logging Service"])
@@ -55,6 +55,24 @@ def get_log_records_of_certain_type(log_type: str):
         results = session.exec(select(Log, LogType).join(LogType).where(LogType.name == log_type).
                                order_by(Log.id)).all()
         return [form_response_model_from_log(log) for log, _ in results]
+
+
+@router.post(path="/create_record", response_model=LogResponseModel)
+def create_log_record_by_type_and_text(log_type: str, log_text: str):
+    with Session(engine) as session:
+        log_record_object_type = session.exec(select(ObjectType).where(ObjectType.name == "history")).one()
+        base_object_for_new_log_record = Object(type_object=log_record_object_type)
+        log_type_object = session.exec(select(LogType).where(LogType.name == log_type)).first()
+        if not log_type_object:
+            raise HTTPException(status_code=404, detail=f"There is no log record type with title={log_type}")
+        new_log_record = Log(action=log_text, base_object=base_object_for_new_log_record, type_object=log_type_object)
+
+        session.add(new_log_record)
+        session.commit()
+        session.refresh(new_log_record)
+
+        response = form_response_model_from_log(new_log_record)
+        return response
 
 
 @router.delete(path="/id={log_id}/delete", response_model=LogResponseModel)
