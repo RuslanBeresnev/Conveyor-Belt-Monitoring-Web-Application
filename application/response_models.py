@@ -51,3 +51,8 @@ class LogResponseModel(BaseModel):
     timestamp: datetime  # from Object model
     type: str  # parameter "name" from LogType model
     text: str  # parameter "action" from Log model
+
+
+class AllLogsRemovingResponseModel(BaseModel):
+    status: str
+    count_of_removed: int
