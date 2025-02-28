@@ -1,6 +1,6 @@
 import requests
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from sqlmodel import Session, select, desc
 
 from .database_connection import engine
@@ -47,7 +47,8 @@ def get_general_status_of_conveyor():
     with Session(engine) as session:
         last_status_record = session.exec(select(ConveyorStatus).order_by(desc(ConveyorStatus.id))).first()
         if not last_status_record:
-            raise HTTPException(status_code=404, detail=f"There are no records of general conveyor status yet")
+            last_status_record = requests.post("http://127.0.0.1:8000/conveyor_info/create_record").json()
+            return last_status_record
         response = form_response_model_from_conveyor_status(last_status_record)
         return response
 
