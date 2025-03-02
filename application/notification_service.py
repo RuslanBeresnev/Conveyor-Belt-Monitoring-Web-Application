@@ -2,6 +2,7 @@ from email.mime.text import MIMEText
 from os.path import exists
 from base64 import urlsafe_b64encode
 from enum import Enum
+import httpx
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -109,12 +110,25 @@ async def send_telegram_notification(notification: TelegramNotification):
                                          NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO: 404}
     user_chat_id, username, error_message = get_user_chat_id_in_telegram()
     if user_chat_id is None:
+        # Action logging
+        async with httpx.AsyncClient() as client:
+            await client.post(url="http://127.0.0.1:8000/logs/create_record",
+                              params={"log_type": "error",
+                                      "log_text": f"Error has occurred while sending notification via Telegram. "
+                                                  f"Error info: \"{error_message.value}\""})
         raise HTTPException(status_code=telegram_notification_error_codes[error_message],
                             detail=error_message.value)
     try:
         await telegram_bot.send_message(chat_id=user_chat_id, text=notification.message)
     except telegram.error.TelegramError as exception:
         raise HTTPException(status_code=500, detail=NotificationSendingErrorMessage.TELEGRAM_ERROR.value) from exception
+
+    # Action logging
+    async with httpx.AsyncClient() as client:
+        await client.post(url="http://127.0.0.1:8000/logs/create_record",
+                          params={"log_type": "action_info",
+                                  "log_text": f"Notification with the text \"{notification.message}\" "
+                                              f"was successfully sent via Telegram to the user @{username}"})
 
     return TelegramNotificationResponseModel(
         notification_method="telegram_notification",
@@ -132,10 +146,19 @@ def send_gmail_notification(notification: GmailNotification):
 
     credentials, error_message = authenticate_and_get_credentials()
     if credentials is None:
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "error",
+                              "log_text": "Error has occurred while sending notification via Gmail. "
+                                          f"Error info: \"{error_message.value}\""})
         raise HTTPException(status_code=403, detail=error_message.value)
     try:
         gmail_service = build(serviceName="gmail", version="v1", credentials=credentials)
     except DefaultCredentialsError as exception:
+        # Action logging
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "error",
+                              "log_text": "Error has occurred while sending notification via Gmail. "
+                                          f"Error info: \"{error_message.value}\""})
         raise HTTPException(status_code=403, detail="Credentials not found or incorrect") from exception
     try:
         # pylint: disable=E1101
@@ -144,6 +167,12 @@ def send_gmail_notification(notification: GmailNotification):
         raise HTTPException(status_code=e.status_code, detail=e.error_details) from e
     except TypeError as e:
         raise HTTPException(status_code=500, detail="Invalid message format") from e
+
+    # Action logging
+    requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                  params={"log_type": "action_info",
+                          "log_text": f"Notification with the subject \"{message["subject"]}\" was successfully sent "
+                                      f"via Gmail to the address {message["to"]}"})
 
     return GmailNotificationResponseModel(
         notification_method="gmail_notification",

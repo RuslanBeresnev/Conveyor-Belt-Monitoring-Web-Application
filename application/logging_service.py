@@ -1,3 +1,5 @@
+import requests
+
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select, desc, text
 
@@ -80,11 +82,20 @@ def delete_log_record_by_id(log_id: int):
     with Session(engine) as session:
         log = session.exec(select(Log).where(Log.id == log_id)).first()
         if not log:
+            # Action logging
+            requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                          params={"log_type": "info",
+                                  "log_text": f"Failed to remove log record with id={log_id}: record not found"})
             raise HTTPException(status_code=404, detail=f"There is no log record with id={log_id}")
         response = form_response_model_from_log(log)
 
         session.delete(log.base_object)
         session.commit()
+
+        # Action logging
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "action_info",
+                              "log_text": f"Log record with id={log_id} has removed successfully"})
 
         return response
 
@@ -106,6 +117,12 @@ def delete_all_log_records():
         # Reset to 1 auto-incremental id counter
         session.connection().execute(text(f"ALTER SEQUENCE {Log.__tablename__}_id_seq RESTART WITH 1"))
         session.commit()
+
+        # Action logging
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "action_info",
+                              "log_text": "All log records has removed successfully"})
+
         return AllLogsRemovingResponseModel(
             status="All log records was deleted",
             count_of_removed=count_to_remove

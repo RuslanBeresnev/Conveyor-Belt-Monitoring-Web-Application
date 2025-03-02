@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select, and_
 
 from .database_connection import engine
-from .db_models import ObjectType, Object, DefectType, Defect, Relation, ConveyorStatus
+from .db_models import Object, DefectType, Defect, Relation
 from .response_models import ServiceInfoResponseModel, DefectResponseModel
 
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
@@ -120,13 +120,28 @@ def get_chain_of_all_previous_variations_of_defect_by_id(current_defect_id: int)
         return response
 
 
+def determine_defect_criticality(defect: Defect):
+    if defect.is_critical:
+        return "critical"
+    elif defect.is_extreme:
+        return "extreme"
+    else:
+        return "normal"
+
+
 @router.put(path="/id={defect_id}/set_criticality", response_model=DefectResponseModel)
 def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_critical: bool):
     with Session(engine) as session:
         defect = session.exec(select(Defect).where(Defect.id == defect_id)).first()
         if not defect:
+            # Action logging
+            requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                          params={"log_type": "info",
+                                  "log_text": f"Failed to change criticality of defect with id={defect_id}: "
+                                              f"defect not found"})
             raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
 
+        previous_criticality = determine_defect_criticality(defect)
         # Processing case of mutually exclusive values defining
         if is_extreme and is_critical:
             is_extreme = False
@@ -137,10 +152,21 @@ def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_crit
         else:
             defect.is_extreme = is_extreme
             defect.is_critical = is_critical
+        current_criticality = determine_defect_criticality(defect)
 
         session.add(defect)
         session.commit()
         session.refresh(defect)
+
+        # Actions logging
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "action_info",
+                              "log_text": f"Criticality of defect with id={defect.id} successfully has changed from "
+                                          f"\"{previous_criticality}\" to \"{current_criticality}\""})
+        if current_criticality != "normal":
+            requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                          params={"log_type": f"{current_criticality}_defect",
+                                  "log_text": f"New {current_criticality} level defect now on the conveyor!"})
 
         # Defect criticality changing causes changing of the general conveyor status
         requests.post("http://127.0.0.1:8000/conveyor_info/create_record")
@@ -154,13 +180,25 @@ def delete_defect_by_id(defect_id: int):
     with Session(engine) as session:
         defect = session.exec(select(Defect).where(Defect.id == defect_id)).first()
         if not defect:
+            # Action logging
+            requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                          params={"log_type": "info",
+                                  "log_text": f"Failed to remove defect with id={defect_id}: defect not found"})
             raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
         response = form_response_model_from_defect(defect)
 
-        # Defect removing causes changing of defect variations chain
-        next_variation_of_defect = session.exec(select(Relation).where(Relation.id_previous == defect_id)).one()
-        if next_variation_of_defect:
+        # Defect removing causes changing of defect variations chain (relinking the “previous” link from the next defect
+        # in the chain to the previous one)
+        next_variation_of_defect = session.exec(select(Relation).where(Relation.id_previous == defect_id)).first()
+        if next_variation_of_defect and defect.current_defect_in_relation:
             next_variation_of_defect.previous_defect_object = defect.current_defect_in_relation.previous_defect_object
+
+        # Action logging (if "Relation" model contains record with id of defect => progress chain of defect will change
+        # anyway)
+        if next_variation_of_defect or defect.current_defect_in_relation:
+            requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                          params={"log_type": "info",
+                                  "log_text": f"Progress chain for defect with id={defect_id} has changed"})
 
         # Within one photo can be two defects so that photo deletion make sense if there is only one defect in the photo
         if len(defect.photo_object.defects) == 1:
@@ -170,6 +208,11 @@ def delete_defect_by_id(defect_id: int):
             session.delete(photo_object.base_object)
         session.delete(defect.base_object)
         session.commit()
+
+        # Action logging
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "action_info",
+                              "log_text": f"Defect with id={defect_id} has removed successfully"})
 
         # Defect removing causes changing of the general conveyor status
         requests.post("http://127.0.0.1:8000/conveyor_info/create_record")

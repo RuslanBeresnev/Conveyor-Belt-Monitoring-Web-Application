@@ -10,15 +10,15 @@ from .response_models import ServiceInfoResponseModel, ConveyorParametersRespons
 router = APIRouter(prefix="/conveyor_info", tags=["Conveyor General Information Service"])
 
 
-def form_response_model_from_conveyor_status(status: ConveyorStatus):
+def form_response_model_from_conveyor_status(conveyor_status: ConveyorStatus):
     """
     Create ConveyorStatusResponseModel from ConveyorStatus DB model using sqlmodel Relationship class and other DB models
     """
-    is_normal = not status.is_extreme and not status.is_critical
+    is_normal = not conveyor_status.is_extreme and not conveyor_status.is_critical
     response = ConveyorStatusResponseModel(
         is_normal=is_normal,
-        is_extreme=status.is_extreme,
-        is_critical=status.is_critical
+        is_extreme=conveyor_status.is_extreme,
+        is_critical=conveyor_status.is_critical
     )
     return response
 
@@ -53,6 +53,15 @@ def get_general_status_of_conveyor():
         return response
 
 
+def determine_criticality_of_conveyor_status(conveyor_status: ConveyorStatus):
+    if conveyor_status.is_critical:
+        return "critical"
+    elif conveyor_status.is_extreme:
+        return "extreme"
+    else:
+        return "normal"
+
+
 @router.post(path="/create_record", response_model=ConveyorStatusResponseModel, status_code=status.HTTP_201_CREATED)
 def create_record_of_current_general_conveyor_status():
     with Session(engine) as session:
@@ -75,6 +84,12 @@ def create_record_of_current_general_conveyor_status():
         session.add(current_conv_status)
         session.commit()
         session.refresh(current_conv_status)
+
+        # Action logging
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "state_of_devices",
+                              "log_text": f"Current general status of conveyor is "
+                                          f"\"{determine_criticality_of_conveyor_status(current_conv_status)}\""})
 
         response = form_response_model_from_conveyor_status(current_conv_status)
         return response
