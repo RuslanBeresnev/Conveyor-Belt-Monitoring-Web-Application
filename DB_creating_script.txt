@@ -151,4 +151,35 @@ CREATE TABLE IF NOT EXISTS public.camera_settings
     mm_pix                   integer            NOT NULL
 );
 
+CREATE EXTENSION IF NOT EXISTS plpython3u;
+
+CREATE OR REPLACE FUNCTION send_notification_about_new_defect()
+RETURNS TRIGGER AS $$
+
+import requests
+import sys
+sys.path.append("D:/source/repos/Conveyor-Belt-Monitoring-Web-Application/application")
+from .notification_service import TelegramNotification
+
+criticality = ""
+if TD["new"]["is_critical"]:
+    criticality = "critical"
+elif TD["new"]["is_extreme"]:
+    criticality = "extreme"
+else:
+    criticality = "normal"
+
+notification_data = {
+    "notification": TelegramNotification(message=f"New {criticality}-level defect with id={TD["new"]["id"]} has appeared on conveyor!")
+}
+requests.post("http://127.0.0.1:8000/notification/with_telegram", params=notification_data, timeout=3)
+
+return TD["new"]
+$$ LANGUAGE plpython3u;
+
+CREATE TRIGGER trigger_of_new_defect
+AFTER INSERT ON defects
+FOR EACH ROW
+EXECUTE FUNCTION send_notification_about_new_defect();
+
 END;
