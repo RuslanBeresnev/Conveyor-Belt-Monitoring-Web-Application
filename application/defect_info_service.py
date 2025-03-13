@@ -12,6 +12,15 @@ from .response_models import ServiceInfoResponseModel, DefectResponseModel
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
 
 
+def determine_defect_criticality(defect: Defect):
+    if defect.is_critical:
+        return "critical"
+    elif defect.is_extreme:
+        return "extreme"
+    else:
+        return "normal"
+
+
 def form_response_model_from_defect(defect: Defect):
     """
     Create DefectResponseModel from Defect DB model using sqlmodel Relationship class and other DB models
@@ -26,8 +35,7 @@ def form_response_model_from_defect(defect: Defect):
         longitudinal_position=defect.location_length_in_conv,
         transverse_position=defect.location_width_in_conv,
         probability=defect.probability,
-        is_critical=defect.is_critical,
-        is_extreme=defect.is_extreme,
+        criticality=determine_defect_criticality(defect),
         base64_photo=b64encode(defect.photo_object.image).decode()
     )
     return response
@@ -118,15 +126,6 @@ def get_chain_of_all_previous_variations_of_defect_by_id(current_defect_id: int)
                 break
             previous_defect = previous_defect.current_defect_in_relation.previous_defect_object
         return response
-
-
-def determine_defect_criticality(defect: Defect):
-    if defect.is_critical:
-        return "critical"
-    elif defect.is_extreme:
-        return "extreme"
-    else:
-        return "normal"
 
 
 @router.put(path="/id={defect_id}/set_criticality", response_model=DefectResponseModel)

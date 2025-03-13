@@ -30,8 +30,7 @@ class DefectResponseModel(BaseModel):
     longitudinal_position: int  # "location_length_in_conv" parameter
     transverse_position: int  # "location_width_in_conv" parameter
     probability: int
-    is_critical: bool
-    is_extreme: bool
+    criticality: str  # determined using parameters "is_critical" and "is_extreme"
     base64_photo: str  # from Photo model (converted to base64 format)
 
 
@@ -57,3 +56,11 @@ class LogResponseModel(BaseModel):
 class AllLogsRemovingResponseModel(BaseModel):
     status: str
     count_of_removed: int
+
+
+class AllDefectsReportResponseModel(BaseModel):
+    doc_type: str  # pdf / csv
+    timestamp: datetime
+    total_count: int
+    extreme_count: int
+    critical_count: int
