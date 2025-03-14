@@ -64,3 +64,9 @@ class AllDefectsReportResponseModel(BaseModel):
     total_count: int
     extreme_count: int
     critical_count: int
+
+
+class OneDefectReportResponseModel(BaseModel):
+    doc_type: str  # pdf / csv
+    timestamp: datetime
+    defect: DefectResponseModel
