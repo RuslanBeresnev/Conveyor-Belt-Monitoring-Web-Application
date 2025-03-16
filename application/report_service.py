@@ -1,7 +1,9 @@
 import base64
 from datetime import datetime
 from io import BytesIO
+import binascii
 
+import PIL
 import requests
 
 from fastapi import APIRouter, HTTPException
@@ -27,9 +29,28 @@ def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo
         timestamp = datetime.fromisoformat(defect_values[1])
         defect_values[1] = timestamp.strftime("%d.%m.%Y\n%H:%M:%S")
         base64_photo = defect_values[-1]
-        image_raw_data = base64.b64decode(base64_photo)
-        image_buffer = BytesIO(image_raw_data)
-        image = Image(image_buffer, width=photo_size[0], height=photo_size[1])
+        image_raw_data = None
+        try:
+            image_raw_data = base64.b64decode(base64_photo)
+        except (binascii.Error, TypeError):
+            error_type = "Decoding error"
+            error_text = "incorrect base64-encoded representation of the photo"
+            # Action logging
+            requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                          params={"log_type": "error",
+                                  "log_text": f"Failed to generate table of the defects in pdf-report: {error_text}"})
+            raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}")
+        try:
+            image_buffer = BytesIO(image_raw_data)
+            image = Image(image_buffer, width=photo_size[0], height=photo_size[1])
+        except (PIL.UnidentifiedImageError, TypeError):
+            error_type = "Unidentified image error"
+            error_text = "raw representation of the photo is not bytes or has corrupted bytes sequence"
+            # Action logging
+            requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                          params={"log_type": "error",
+                                  "log_text": f"Failed to generate table of the defects in pdf-report: {error_text}"})
+            raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}")
         defect_values[-1] = image
     return table_values
 
@@ -112,6 +133,11 @@ def upload_report_of_all_defects_in_pdf_format():
     elements = [title, general_statistics, Spacer(1, 25), table]
     report_doc.build(elements)
 
+    # Action logging
+    requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                  params={"log_type": "report_info",
+                          "log_text": "Report of the all defects in .pdf format has successfully generated"})
+
     response = AllDefectsReportResponseModel(
         doc_type="pdf",
         timestamp=datetime.now(),
@@ -127,6 +153,11 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
     report_doc = SimpleDocTemplate(f"report_of_defect_id_{defect_id}.pdf", pagesize=A4)
     response = requests.get(f"http://127.0.0.1:8000/defect_info/id={defect_id}")
     if response.status_code == 404:
+        # Action logging
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "error",
+                              "log_text": f"Failed to generate report of the defect with id={defect_id}: "
+                                          f"defect not found"})
         raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
     defect = response.json()
 
@@ -153,6 +184,12 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
 
     elements = [title, table, Spacer(1, 25), defect_photo]
     report_doc.build(elements)
+
+    # Action logging
+    requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                  params={"log_type": "report_info",
+                          "log_text": f"Report of the defect with id={defect_id} in .pdf format has successfully "
+                                      f"generated"})
 
     response = OneDefectReportResponseModel(
         doc_type="pdf",
@@ -206,6 +243,12 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     elements = [title, parameters_and_status]
     report_doc.build(elements)
 
+    # Action logging
+    requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                  params={"log_type": "report_info",
+                          "log_text": "Report of the conveyor parameters and status in .pdf format has successfully "
+                                      "generated"})
+
     response = ConveyorInfoReportResponseModel(
         doc_type="pdf",
         timestamp=datetime.now(),
@@ -227,6 +270,11 @@ def upload_report_of_all_defects_in_csv_format():
         output_file.write(csv_table_headers)
         output_file.writelines(line for line in csv_table_lines)
 
+    # Action logging
+    requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                  params={"log_type": "report_info",
+                          "log_text": "Report of the all defects in .csv format has successfully generated"})
+
     response = AllDefectsReportResponseModel(
         doc_type="csv",
         timestamp=datetime.now(),
@@ -241,6 +289,11 @@ def upload_report_of_all_defects_in_csv_format():
 def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
     response = requests.get(f"http://127.0.0.1:8000/defect_info/id={defect_id}")
     if response.status_code == 404:
+        # Action logging
+        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                      params={"log_type": "error",
+                              "log_text": f"Failed to generate report of the defect with id={defect_id}: "
+                                          f"defect not found"})
         raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
     defect = response.json()
 
@@ -250,6 +303,12 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
     with open(f"report_of_defect_id_{defect_id}.csv", "w", encoding="utf-8") as output_file:
         output_file.write(csv_headers)
         output_file.write(csv_defect_info)
+
+    # Action logging
+    requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                  params={"log_type": "report_info",
+                          "log_text": f"Report of the defect with id={defect_id} in .csv format has successfully "
+                                      f"generated"})
 
     response = OneDefectReportResponseModel(
         doc_type="csv",
@@ -277,6 +336,12 @@ def upload_report_of_conveyor_parameters_and_status_in_csv_format():
     with open("report_of_conveyor_info.csv", "w", encoding="utf-8") as output_file:
         output_file.write(csv_headers)
         output_file.write(csv_conveyor_info)
+
+    # Action logging
+    requests.post(url="http://127.0.0.1:8000/logs/create_record",
+                  params={"log_type": "report_info",
+                          "log_text": "Report of the conveyor parameters and status in .csv format has successfully "
+                                      "generated"})
 
     response = ConveyorInfoReportResponseModel(
         doc_type="csv",
