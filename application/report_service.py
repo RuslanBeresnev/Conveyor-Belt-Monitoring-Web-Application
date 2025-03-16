@@ -257,3 +257,30 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
         defect=defect
     )
     return response
+
+
+@router.post(path="/conveyor/csv", response_model=ConveyorInfoReportResponseModel)
+def upload_report_of_conveyor_parameters_and_status_in_csv_format():
+    parameters = requests.get("http://127.0.0.1:8000/conveyor_info/parameters").json()
+    status = requests.get("http://127.0.0.1:8000/conveyor_info/status").json()
+    status_text = None
+    if status["is_normal"]:
+        status_text = "normal"
+    elif status["is_extreme"]:
+        status_text = "extreme"
+    elif status["is_critical"]:
+        status_text = "critical"
+
+    csv_headers = "belt_length,belt_width,belt_thickness,general_status\n"
+    csv_conveyor_info = ",".join([str(value) for (key, value) in parameters.items()]) + f",{status_text}\n"
+
+    with open("report_of_conveyor_info.csv", "w", encoding="utf-8") as output_file:
+        output_file.write(csv_headers)
+        output_file.write(csv_conveyor_info)
+
+    response = ConveyorInfoReportResponseModel(
+        doc_type="csv",
+        timestamp=datetime.now(),
+        status=status_text
+    )
+    return response
