@@ -212,3 +212,26 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
         status=status_text
     )
     return response
+
+
+@router.post(path="/all/csv", response_model=AllDefectsReportResponseModel)
+def upload_report_of_all_defects_in_csv_format():
+    all_defects = requests.get("http://127.0.0.1:8000/defect_info/all").json()
+    extreme_defects = requests.get("http://127.0.0.1:8000/defect_info/extreme").json()
+    critical_defects = requests.get("http://127.0.0.1:8000/defect_info/critical").json()
+
+    csv_table_headers = ",".join([str(key) for key, value in all_defects[0].items()]) + "\n"
+    csv_table_lines = [",".join([str(value) for key, value in defect.items()]) + "\n" for defect in all_defects]
+
+    with open("report_of_all_defects.csv", "w", encoding="utf-8") as output_file:
+        output_file.write(csv_table_headers)
+        output_file.writelines(line for line in csv_table_lines)
+
+    response = AllDefectsReportResponseModel(
+        doc_type="csv",
+        timestamp=datetime.now(),
+        total_count=len(all_defects),
+        extreme_count=len(extreme_defects),
+        critical_count=len(critical_defects)
+    )
+    return response
