@@ -5,13 +5,14 @@ from io import BytesIO
 import requests
 
 from fastapi import APIRouter, HTTPException
+from reportlab.lib.colors import Color
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Image, ListFlowable, Spacer
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from .response_models import (ServiceInfoResponseModel, DefectResponseModel, AllDefectsReportResponseModel,
-                              OneDefectReportResponseModel)
+                              OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
 
 router = APIRouter(prefix="/report", tags=["Reports Generation Service"])
 
@@ -56,6 +57,13 @@ def render_table_of_defects(table: Table, table_data: list):
             table.setStyle(TableStyle([
                 ('BACKGROUND', (0, i), (-1, i), colors.red),
             ]))
+
+
+def convert_color_to_hex(color: Color):
+    r = int(color.red * 255)
+    g = int(color.green * 255)
+    b = int(color.blue * 255)
+    return f"#{r:02X}{g:02X}{b:02X}"
 
 
 @router.get(path="/", response_model=ServiceInfoResponseModel)
@@ -150,5 +158,57 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
         doc_type="pdf",
         timestamp=datetime.now(),
         defect=defect
+    )
+    return response
+
+
+@router.post(path="/conveyor/pdf", response_model=ConveyorInfoReportResponseModel)
+def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
+    report_doc = SimpleDocTemplate("report_of_conveyor_info.pdf", pagesize=A4)
+
+    title_style = getSampleStyleSheet()["Title"]
+    title_style.fontSize = 24
+    title_style.alignment = 1
+    title_style.spaceAfter = 32
+    title = Paragraph(f"REPORT ABOUT CONVEYOR INFO ({datetime.now().strftime("%d.%m.%Y - %H:%M")})", title_style)
+
+    parameters = requests.get("http://127.0.0.1:8000/conveyor_info/parameters").json()
+    status = requests.get("http://127.0.0.1:8000/conveyor_info/status").json()
+    status_text = None
+    status_text_color = None
+    if status["is_normal"]:
+        status_text = "normal"
+        status_text_color = colors.green
+    elif status["is_extreme"]:
+        status_text = "extreme"
+        status_text_color = colors.orange
+    elif status["is_critical"]:
+        status_text = "critical"
+        status_text_color = colors.red
+
+    info_list_style = ParagraphStyle(
+        name="InfoListStyle",
+        parent=getSampleStyleSheet()["Normal"],
+        fontSize=16,
+        leading=20
+    )
+    parameters_and_status = ListFlowable(
+        [
+            Paragraph(f"Belt length: <b>{parameters["belt_length"] / 1000000} km</b>", info_list_style),
+            Paragraph(f"Belt width: <b>{parameters["belt_width"] / 1000} m</b>", info_list_style),
+            Paragraph(f"Belt thickness: <b>{parameters["belt_thickness"]} mm</b>", info_list_style),
+            Paragraph(f"General status: <b><font color=\"{convert_color_to_hex(status_text_color)}\">"
+                      f"{status_text.upper()}</font></b>", info_list_style),
+        ],
+        bulletType="bullet"
+    )
+
+    elements = [title, parameters_and_status]
+    report_doc.build(elements)
+
+    response = ConveyorInfoReportResponseModel(
+        doc_type="pdf",
+        timestamp=datetime.now(),
+        status=status_text
     )
     return response

@@ -70,3 +70,9 @@ class OneDefectReportResponseModel(BaseModel):
     doc_type: str  # pdf / csv
     timestamp: datetime
     defect: DefectResponseModel
+
+
+class ConveyorInfoReportResponseModel(BaseModel):
+    doc_type: str  # pdf / csv
+    timestamp: datetime
+    status: str  # normal / extreme / critical
