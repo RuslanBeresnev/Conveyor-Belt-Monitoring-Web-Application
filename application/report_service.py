@@ -235,3 +235,25 @@ def upload_report_of_all_defects_in_csv_format():
         critical_count=len(critical_defects)
     )
     return response
+
+
+@router.post(path="/id={defect_id}/csv", response_model=OneDefectReportResponseModel)
+def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
+    response = requests.get(f"http://127.0.0.1:8000/defect_info/id={defect_id}")
+    if response.status_code == 404:
+        raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
+    defect = response.json()
+
+    csv_headers = ",".join([str(key) for key, value in defect.items()]) + "\n"
+    csv_defect_info = ",".join([str(value) for key, value in defect.items()]) + "\n"
+
+    with open(f"report_of_defect_id_{defect_id}.csv", "w", encoding="utf-8") as output_file:
+        output_file.write(csv_headers)
+        output_file.write(csv_defect_info)
+
+    response = OneDefectReportResponseModel(
+        doc_type="csv",
+        timestamp=datetime.now(),
+        defect=defect
+    )
+    return response
