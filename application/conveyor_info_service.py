@@ -87,8 +87,7 @@ def create_record_of_current_general_conveyor_status():
 
         # Action logging
         requests.post(url="http://127.0.0.1:8000/logs/create_record",
-                      params={"log_type": "state_of_devices",
-                              "log_text": f"Current general status of conveyor is "
+                      params={"log_type": "state_of_devices", "log_text": f"Current general status of conveyor is "
                                           f"\"{determine_criticality_of_conveyor_status(current_conv_status)}\""})
 
         response = form_response_model_from_conveyor_status(current_conv_status)
