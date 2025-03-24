@@ -5,7 +5,7 @@ from sqlmodel import Session, select, desc, text
 
 from .database_connection import engine
 from .db_models import ObjectType, Object, LogType, Log
-from .response_models import ServiceInfoResponseModel, LogResponseModel, AllLogsRemovingResponseModel
+from .api_models import ServiceInfoResponseModel, LogResponseModel, AllLogsRemovingResponseModel
 
 router = APIRouter(prefix="/logs", tags=["Logging Service"])
 

@@ -1,12 +1,12 @@
+from io import BytesIO
 from email.mime.text import MIMEText
 from os.path import exists
 from base64 import urlsafe_b64encode
 from enum import Enum
+import requests
 import httpx
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-import requests
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 
 from telegram import Bot
 import telegram.error
@@ -19,7 +19,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from .config import Settings
-from .response_models import ServiceInfoResponseModel, TelegramNotificationResponseModel, GmailNotificationResponseModel
+from .api_models import (TelegramNotification, GmailNotification, ServiceInfoResponseModel,
+                         TelegramNotificationResponseModel, GmailNotificationResponseModel)
 
 GOOGLE_CLIENT_SECRET_FILE = "client_secret.json"
 GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
@@ -87,16 +88,6 @@ def authenticate_and_get_credentials():
     return credentials, None
 
 
-class TelegramNotification(BaseModel):
-    message: str
-
-
-class GmailNotification(BaseModel):
-    to_email: str
-    subject: str
-    message: str
-
-
 @router.get(path="/", response_model=ServiceInfoResponseModel)
 def get_service_info():
     return ServiceInfoResponseModel(
@@ -105,7 +96,8 @@ def get_service_info():
 
 
 @router.post("/with_telegram", response_model=TelegramNotificationResponseModel)
-async def send_telegram_notification(notification: TelegramNotification):
+async def send_telegram_notification(notification: TelegramNotification = Depends(),
+                                     attached_file: UploadFile | str = File(None)):
     async with httpx.AsyncClient() as client:
         telegram_notification_error_codes = {NotificationSendingErrorMessage.INVALID_BOT_TOKEN: 500,
                                              NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO: 404}
@@ -119,7 +111,13 @@ async def send_telegram_notification(notification: TelegramNotification):
                                 detail=error_message.value)
 
         try:
-            await telegram_bot.send_message(chat_id=user_chat_id, text=notification.message)
+            if attached_file == "":
+                await telegram_bot.send_message(chat_id=user_chat_id, text=notification.message)
+            else:
+                attached_file_bytes = BytesIO(await attached_file.read())
+                attached_file_bytes.name = attached_file.filename
+                await telegram_bot.send_document(chat_id=user_chat_id, document=attached_file_bytes,
+                                                 caption=notification.message)
         except telegram.error.TelegramError as exception:
             # Action logging
             await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":

@@ -5,7 +5,7 @@ from sqlmodel import Session, select, desc
 
 from .database_connection import engine
 from .db_models import ObjectType, Object, ConveyorParameters, ConveyorStatus
-from .response_models import ServiceInfoResponseModel, ConveyorParametersResponseModel, ConveyorStatusResponseModel
+from .api_models import ServiceInfoResponseModel, ConveyorParametersResponseModel, ConveyorStatusResponseModel
 
 router = APIRouter(prefix="/conveyor_info", tags=["Conveyor General Information Service"])
 

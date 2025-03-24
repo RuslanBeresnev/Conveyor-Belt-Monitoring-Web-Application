@@ -3,6 +3,16 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class TelegramNotification(BaseModel):
+    message: str
+
+
+class GmailNotification(BaseModel):
+    to_email: str
+    subject: str
+    message: str
+
+
 class ServiceInfoResponseModel(BaseModel):
     info: str
 

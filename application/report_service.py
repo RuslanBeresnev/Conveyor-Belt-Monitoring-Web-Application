@@ -13,8 +13,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from .response_models import (ServiceInfoResponseModel, DefectResponseModel, AllDefectsReportResponseModel,
-                              OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
+from .api_models import (TelegramNotification, ServiceInfoResponseModel, DefectResponseModel,
+                         AllDefectsReportResponseModel, OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
 
 router = APIRouter(prefix="/report", tags=["Reports Generation Service"])
 
@@ -96,7 +96,8 @@ def get_service_info():
 
 @router.post(path="/all/pdf", response_model=AllDefectsReportResponseModel)
 def upload_report_of_all_defects_in_pdf_format():
-    report_doc = SimpleDocTemplate("report_of_all_defects.pdf", pagesize=landscape(A4))
+    filename = "report_of_all_defects.pdf"
+    report_doc = SimpleDocTemplate(filename, pagesize=landscape(A4))
     all_defects = requests.get("http://127.0.0.1:8000/defect_info/all").json()
 
     # Paragraph style for header text line break
@@ -133,6 +134,10 @@ def upload_report_of_all_defects_in_pdf_format():
     elements = [title, general_statistics, Spacer(1, 25), table]
     report_doc.build(elements)
 
+    # Sending generated report via Telegram
+    requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                  params={"message": "PDF-report of all defects"}, files=[("attached_file", open(filename, "rb"))])
+
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the all defects in .pdf format has successfully generated"})
@@ -149,7 +154,8 @@ def upload_report_of_all_defects_in_pdf_format():
 
 @router.post(path="/id={defect_id}/pdf", response_model=OneDefectReportResponseModel)
 def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
-    report_doc = SimpleDocTemplate(f"report_of_defect_id_{defect_id}.pdf", pagesize=A4)
+    filename = f"report_of_defect_id_{defect_id}.pdf"
+    report_doc = SimpleDocTemplate(filename, pagesize=A4)
     response = requests.get(f"http://127.0.0.1:8000/defect_info/id={defect_id}")
     if response.status_code == 404:
         # Action logging
@@ -182,6 +188,11 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
     elements = [title, table, Spacer(1, 25), defect_photo]
     report_doc.build(elements)
 
+    # Sending generated report via Telegram
+    requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                  params={"message": f"PDF-report of defect with id={defect_id}"},
+                  files=[("attached_file", open(filename, "rb"))])
+
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         f"Report of the defect with id={defect_id} in .pdf format has successfully generated"})
@@ -196,7 +207,8 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
 
 @router.post(path="/conveyor/pdf", response_model=ConveyorInfoReportResponseModel)
 def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
-    report_doc = SimpleDocTemplate("report_of_conveyor_info.pdf", pagesize=A4)
+    filename = "report_of_conveyor_info.pdf"
+    report_doc = SimpleDocTemplate(filename, pagesize=A4)
 
     title_style = getSampleStyleSheet()["Title"]
     title_style.fontSize = 24
@@ -238,6 +250,11 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     elements = [title, parameters_and_status]
     report_doc.build(elements)
 
+    # Sending generated report via Telegram
+    requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                  params={"message": "PDF-report of conveyor parameters and status"},
+                  files=[("attached_file", open(filename, "rb"))])
+
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the conveyor parameters and status in .pdf format has successfully generated"})
@@ -259,9 +276,14 @@ def upload_report_of_all_defects_in_csv_format():
     csv_table_headers = ",".join([str(key) for key, value in all_defects[0].items()]) + "\n"
     csv_table_lines = [",".join([str(value) for key, value in defect.items()]) + "\n" for defect in all_defects]
 
-    with open("report_of_all_defects.csv", "w", encoding="utf-8") as output_file:
+    filename = "report_of_all_defects.csv"
+    with open(filename, "w", encoding="utf-8") as output_file:
         output_file.write(csv_table_headers)
         output_file.writelines(line for line in csv_table_lines)
+
+    # Sending generated report via Telegram
+    requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                  params={"message": "CSV-report of all defects"}, files=[("attached_file", open(filename, "rb"))])
 
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
@@ -290,9 +312,15 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
     csv_headers = ",".join([str(key) for key, value in defect.items()]) + "\n"
     csv_defect_info = ",".join([str(value) for key, value in defect.items()]) + "\n"
 
-    with open(f"report_of_defect_id_{defect_id}.csv", "w", encoding="utf-8") as output_file:
+    filename = f"report_of_defect_id_{defect_id}.csv"
+    with open(filename, "w", encoding="utf-8") as output_file:
         output_file.write(csv_headers)
         output_file.write(csv_defect_info)
+
+    # Sending generated report via Telegram
+    requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                  params={"message": f"CSV-report of defect with id={defect_id}"},
+                  files=[("attached_file", open(filename, "rb"))])
 
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
@@ -321,9 +349,15 @@ def upload_report_of_conveyor_parameters_and_status_in_csv_format():
     csv_headers = "belt_length,belt_width,belt_thickness,general_status\n"
     csv_conveyor_info = ",".join([str(value) for (key, value) in parameters.items()]) + f",{status_text}\n"
 
+    filename = "report_of_conveyor_info.csv"
     with open("report_of_conveyor_info.csv", "w", encoding="utf-8") as output_file:
         output_file.write(csv_headers)
         output_file.write(csv_conveyor_info)
+
+    # Sending generated report via Telegram
+    requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                  params={"message": "CSV-report of conveyor parameters and status"},
+                  files=[("attached_file", open(filename, "rb"))])
 
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
