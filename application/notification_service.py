@@ -139,7 +139,8 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
         return TelegramNotificationResponseModel(
             notification_method="telegram_notification",
             to_user='@' + username,
-            sent_text=notification.message
+            sent_message=notification.message,
+            attached_file=attached_file.filename if attached_file != "" else None
         )
 
 
@@ -211,5 +212,6 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
             notification_method="gmail_notification",
             to=message["to"],
             subject=message["subject"],
-            sent_message=notification.text
+            sent_text=notification.text,
+            attached_file=attached_file.filename if attached_file != "" else None
         )

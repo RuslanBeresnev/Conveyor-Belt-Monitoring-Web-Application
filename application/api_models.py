@@ -19,14 +19,16 @@ class ServiceInfoResponseModel(BaseModel):
 class TelegramNotificationResponseModel(BaseModel):
     notification_method: str
     to_user: str
-    sent_text: str
+    sent_message: str
+    attached_file: str | None
 
 
 class GmailNotificationResponseModel(BaseModel):
     notification_method: str
     to: str
     subject: str
-    sent_message: str
+    sent_text: str
+    attached_file: str | None
 
 
 class DefectResponseModel(BaseModel):
