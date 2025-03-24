@@ -137,6 +137,10 @@ def upload_report_of_all_defects_in_pdf_format():
     # Sending generated report via Telegram
     requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
                   params={"message": "PDF-report of all defects"}, files=[("attached_file", open(filename, "rb"))])
+    # Sending generated report via Gmail
+    requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                  params={"subject": "PDF-report of all defects", "text": ""},
+                  files=[("attached_file", open(filename, "rb"))])
 
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
@@ -191,6 +195,10 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
     # Sending generated report via Telegram
     requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
                   params={"message": f"PDF-report of defect with id={defect_id}"},
+                  files=[("attached_file", open(filename, "rb"))])
+    # Sending generated report via Gmail
+    requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                  params={"subject": f"PDF-report of defect with id={defect_id}", "text": ""},
                   files=[("attached_file", open(filename, "rb"))])
 
     # Action logging
@@ -254,6 +262,10 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
                   params={"message": "PDF-report of conveyor parameters and status"},
                   files=[("attached_file", open(filename, "rb"))])
+    # Sending generated report via Gmail
+    requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                  params={"subject": "PDF-report of conveyor parameters and status", "text": ""},
+                  files=[("attached_file", open(filename, "rb"))])
 
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
@@ -284,6 +296,10 @@ def upload_report_of_all_defects_in_csv_format():
     # Sending generated report via Telegram
     requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
                   params={"message": "CSV-report of all defects"}, files=[("attached_file", open(filename, "rb"))])
+    # Sending generated report via Gmail
+    requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                  params={"subject": "CSV-report of all defects", "text": ""},
+                  files=[("attached_file", open(filename, "rb"))])
 
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
@@ -321,6 +337,10 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
     requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
                   params={"message": f"CSV-report of defect with id={defect_id}"},
                   files=[("attached_file", open(filename, "rb"))])
+    # Sending generated report via Gmail
+    requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                  params={"subject": f"CSV-report of defect with id={defect_id}", "text": ""},
+                  files=[("attached_file", open(filename, "rb"))])
 
     # Action logging
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
@@ -357,6 +377,10 @@ def upload_report_of_conveyor_parameters_and_status_in_csv_format():
     # Sending generated report via Telegram
     requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
                   params={"message": "CSV-report of conveyor parameters and status"},
+                  files=[("attached_file", open(filename, "rb"))])
+    # Sending generated report via Gmail
+    requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                  params={"subject": "CSV-report of conveyor parameters and status", "text": ""},
                   files=[("attached_file", open(filename, "rb"))])
 
     # Action logging

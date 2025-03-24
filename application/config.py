@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     """
     TELEGRAM_BOT_TOKEN: str
     DATABASE_URL: str
+    GMAIL_ADDRESS: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -8,9 +8,8 @@ class TelegramNotification(BaseModel):
 
 
 class GmailNotification(BaseModel):
-    to_email: str
     subject: str
-    message: str
+    text: str
 
 
 class ServiceInfoResponseModel(BaseModel):
@@ -20,7 +19,7 @@ class ServiceInfoResponseModel(BaseModel):
 class TelegramNotificationResponseModel(BaseModel):
     notification_method: str
     to_user: str
-    sent_message: str
+    sent_text: str
 
 
 class GmailNotificationResponseModel(BaseModel):

@@ -1,5 +1,10 @@
-from io import BytesIO
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import mimetypes
+
+from io import BytesIO
 from os.path import exists
 from base64 import urlsafe_b64encode
 from enum import Enum
@@ -134,54 +139,77 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
         return TelegramNotificationResponseModel(
             notification_method="telegram_notification",
             to_user='@' + username,
-            sent_message=notification.message
+            sent_text=notification.message
         )
 
 
 @router.post("/with_gmail", response_model=GmailNotificationResponseModel)
-def send_gmail_notification(notification: GmailNotification):
-    message = MIMEText(notification.message)
-    message["to"] = notification.to_email
-    message["subject"] = notification.subject
-    formatted_message = {'raw': urlsafe_b64encode(message.as_bytes()).decode()}
+async def send_gmail_notification(notification: GmailNotification = Depends(),
+                                  attached_file: UploadFile | str = File(None)):
+    async with httpx.AsyncClient() as client:
+        if attached_file == "":
+            message = MIMEText(notification.text)
+        else:
+            message = MIMEMultipart()
 
-    credentials, error_message = authenticate_and_get_credentials()
-    if credentials is None:
+        message["to"] = settings.GMAIL_ADDRESS
+        message["subject"] = notification.subject
+
+        if attached_file != "":
+            text = MIMEText(notification.text)
+            message.attach(text)
+
+            mime_type, _ = mimetypes.guess_type(attached_file.filename)
+            if mime_type is None:
+                mime_type = "application/octet-stream"
+            main_type, sub_type = mime_type.split("/")
+
+            attachment = MIMEBase(main_type, sub_type)
+            attachment.set_payload(await attached_file.read())
+            encoders.encode_base64(attachment)
+            attachment.add_header("Content-Disposition",
+                                  f'attachment; filename="{attached_file.filename}"')
+            message.attach(attachment)
+
+        formatted_message = {'raw': urlsafe_b64encode(message.as_bytes()).decode()}
+
+        credentials, error_message = authenticate_and_get_credentials()
+        if credentials is None:
+            # Action logging
+            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
+                f"Error has occurred while sending notification via Gmail. Error info: \"{error_message.value}\""})
+            raise HTTPException(status_code=403, detail=error_message.value)
+
+        try:
+            gmail_service = build(serviceName="gmail", version="v1", credentials=credentials)
+        except DefaultCredentialsError as exception:
+            # Action logging
+            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
+                f"Error has occurred while sending notification via Gmail. Error info: \"{error_message.value}\""})
+            raise HTTPException(status_code=403, detail="Credentials not found or incorrect") from exception
+
+        try:
+            # pylint: disable=E1101
+            gmail_service.users().messages().send(userId="me", body=formatted_message).execute()
+        except HttpError as e:
+            # Action logging
+            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
+                f"Error has occurred while sending notification via Gmail. Error info: \"{e.error_details}\""})
+            raise HTTPException(status_code=e.status_code, detail=e.error_details) from e
+        except TypeError as e:
+            # Action logging
+            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
+                "Error has occurred while sending notification via Gmail: invalid message format"})
+            raise HTTPException(status_code=500, detail="Invalid message format") from e
+
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-            f"Error has occurred while sending notification via Gmail. Error info: \"{error_message.value}\""})
-        raise HTTPException(status_code=403, detail=error_message.value)
+        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "action_info", "log_text":
+            f"Notification with the subject \"{message["subject"]}\" was successfully sent via Gmail to the address "
+            f"{message["to"]}"})
 
-    try:
-        gmail_service = build(serviceName="gmail", version="v1", credentials=credentials)
-    except DefaultCredentialsError as exception:
-        # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-            f"Error has occurred while sending notification via Gmail. Error info: \"{error_message.value}\""})
-        raise HTTPException(status_code=403, detail="Credentials not found or incorrect") from exception
-
-    try:
-        # pylint: disable=E1101
-        gmail_service.users().messages().send(userId="me", body=formatted_message).execute()
-    except HttpError as e:
-        # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-            f"Error has occurred while sending notification via Gmail. Error info: \"{e.error_details}\""})
-        raise HTTPException(status_code=e.status_code, detail=e.error_details) from e
-    except TypeError as e:
-        # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-            "Error has occurred while sending notification via Gmail: invalid message format"})
-        raise HTTPException(status_code=500, detail="Invalid message format") from e
-
-    # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "action_info", "log_text":
-        f"Notification with the subject \"{message["subject"]}\" was successfully sent via Gmail to the address "
-        f"{message["to"]}"})
-
-    return GmailNotificationResponseModel(
-        notification_method="gmail_notification",
-        to=message["to"],
-        subject=message["subject"],
-        sent_message=notification.message
-    )
+        return GmailNotificationResponseModel(
+            notification_method="gmail_notification",
+            to=message["to"],
+            subject=message["subject"],
+            sent_message=notification.text
+        )
