@@ -48,6 +48,10 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
     defect_to_text = "\n".join([f"{key} = {str(value)}" for (key, value) in
                                 formatted_defect.model_dump(exclude={"base64_photo"}).items()])
 
+    # New defect may cause changing of the general conveyor status
+    async with AsyncClient() as client:
+        await client.post("http://127.0.0.1:8000/conveyor_info/create_record")
+
     defect_photo = None
     try:
         defect_photo = BytesIO(base64.b64decode(formatted_defect.base64_photo))
