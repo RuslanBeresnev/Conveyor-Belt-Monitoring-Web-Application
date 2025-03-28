@@ -16,6 +16,10 @@ class ServiceInfoResponseModel(BaseModel):
     info: str
 
 
+class MaintenanceActionResponseModel(BaseModel):
+    maintenance_info: str
+
+
 class TelegramNotificationResponseModel(BaseModel):
     notification_method: str
     to_user: str
@@ -43,6 +47,12 @@ class DefectResponseModel(BaseModel):
     probability: int
     criticality: str  # determined using parameters "is_critical" and "is_extreme"
     base64_photo: str  # from Photo model (converted to base64 format)
+
+
+class NewConveyorParameters(BaseModel):
+    new_belt_length: int
+    new_belt_width: int
+    new_belt_thickness: int
 
 
 class ConveyorParametersResponseModel(BaseModel):

@@ -140,3 +140,15 @@ class Log(SQLModel, table=True):
 
     base_object: Object = Relationship(back_populates="log")
     type_object: LogType = Relationship(back_populates="logs")
+
+
+class Version(SQLModel, table=True):
+    __tablename__ = "version"
+    id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
+    version: str = Field(default="1.0.2", nullable=False)
+
+
+class CameraSettings(SQLModel, table=True):
+    __tablename__ = "camera_settings"
+    id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
+    mm_pix: int = Field(nullable=False)

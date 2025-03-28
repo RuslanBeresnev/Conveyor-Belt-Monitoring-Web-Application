@@ -64,6 +64,7 @@ def create_log_record_by_type_and_text(log_type: str, log_text: str):
     with Session(engine) as session:
         log_record_object_type = session.exec(select(ObjectType).where(ObjectType.name == "history")).one()
         base_object_for_new_log_record = Object(type_object=log_record_object_type)
+        session.add(base_object_for_new_log_record)
         log_type_object = session.exec(select(LogType).where(LogType.name == log_type)).first()
         if not log_type_object:
             raise HTTPException(status_code=404, detail=f"There is no log record type with title={log_type}")

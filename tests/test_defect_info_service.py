@@ -1,97 +1,38 @@
 from datetime import datetime
 from base64 import b64encode
+import subprocess
+import time
 
+from sqlmodel import SQLModel
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel, Session
 import pytest
 
 from application.main import application
-from application.db_models import ObjectType, Object, DefectType, Photo, Defect
 from application.database_connection import engine, settings
 
-# Перед запуском тестов необходимо поменять значение DATABASE_URL в файле .env на тестовое
+# Before running the tests, you need to change the DATABASE_URL value in the .env file to the test one.
+# !!! If there is <requests.exceptions.ConnectionError> - increase <time.sleep(...)> value !!!
+
+client = TestClient(application)
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_module():
-    yield
-    # Очистка тестовой базы данных после серии тестов
-    SQLModel.metadata.drop_all(engine)
+    process = subprocess.Popen(["uvicorn", "application.main:application", "--host", "127.0.0.1", "--port", "8000"])
+    time.sleep(3)
 
+    try:
+        client.post(url="/maintenance/create_tables", params={"test_mode": True})
+        client.post(url="/maintenance/fill_database")
+        yield
+    finally:
+        SQLModel.metadata.drop_all(engine)
+        process.terminate()
 
-def create_db_tables():
-    SQLModel.metadata.create_all(engine)
-
-
-def fill_db_with_data():
-    # pylint: disable=R0914
-    with Session(engine) as session:
-        object_type_for_defect = ObjectType(name="defect")
-        object_type_for_conv_state = ObjectType(name="conv_state")
-        object_type_for_history = ObjectType(name="history")
-        object_type_for_photo = ObjectType(name="photo")
-        session.add(object_type_for_defect)
-        session.add(object_type_for_conv_state)
-        session.add(object_type_for_history)
-        session.add(object_type_for_photo)
-
-        defect_type_chip = DefectType(name="chip", is_belt=False)
-        defect_type_delamination = DefectType(name="delamination", is_belt=False)
-        defect_type_rope = DefectType(name="rope")
-        defect_type_crack = DefectType(name="crack")
-        defect_type_liftup = DefectType(name="liftup")
-        defect_type_hole = DefectType(name="hole")
-        defect_type_tear = DefectType(name="tear")
-        defect_type_wear = DefectType(name="wear")
-        defect_type_joint = DefectType(name="joint")
-        defect_type_joint_worn = DefectType(name="joint_worn")
-        session.add(defect_type_chip)
-        session.add(defect_type_delamination)
-        session.add(defect_type_rope)
-        session.add(defect_type_crack)
-        session.add(defect_type_liftup)
-        session.add(defect_type_hole)
-        session.add(defect_type_tear)
-        session.add(defect_type_wear)
-        session.add(defect_type_joint)
-        session.add(defect_type_joint_worn)
-
-        object_of_defect_1 = Object(type_object=object_type_for_defect, time=datetime(2025, 1, 1))
-        object_of_defect_2 = Object(type_object=object_type_for_defect, time=datetime(2025, 1, 2))
-        object_of_photo_1 = Object(type_object=object_type_for_photo, time=datetime(2025, 1, 1))
-        object_of_photo_2 = Object(type_object=object_type_for_photo, time=datetime(2025, 1, 2))
-        session.add(object_of_defect_1)
-        session.add(object_of_defect_2)
-        session.add(object_of_photo_1)
-        session.add(object_of_photo_2)
-
-        photo_1 = Photo(base_object=object_of_photo_1, image="photo1".encode())
-        photo_2 = Photo(base_object=object_of_photo_2, image="photo2".encode())
-        session.add(photo_1)
-        session.add(photo_2)
-
-        extreme_defect = Defect(base_object=object_of_defect_1, type_object=defect_type_hole, box_width=400,
-                                box_length=400, location_width_in_frame=10, location_length_in_frame=10,
-                                location_width_in_conv=10, location_length_in_conv=10, photo_object=photo_1,
-                                probability=90, is_critical=False, is_extreme=True)
-        critical_defect = Defect(base_object=object_of_defect_2, type_object=defect_type_tear, box_width=500,
-                                 box_length=500, location_width_in_frame=10, location_length_in_frame=10,
-                                 location_width_in_conv=10, location_length_in_conv=10, photo_object=photo_2,
-                                 probability=95, is_critical=True, is_extreme=False)
-        session.add(extreme_defect)
-        session.add(critical_defect)
-
-        session.commit()
-
-
-# Защита от изменения production базы данных
-if settings.DATABASE_URL != "postgresql://test_user:test_password@localhost:5432/test_db":
-    raise ValueError("ИСПОЛЬЗУЮТСЯ НЕ ТЕСТОВЫЕ ПАРАМЕТРЫ ДЛЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ. "
-                     "ИЗМЕНИТЕ ПАРАМЕТР \"DATABASE_URL\" В ФАЙЛЕ .env")
-
-create_db_tables()
-fill_db_with_data()
-client = TestClient(application)
+# Protection against changes to the production database
+if settings.DATABASE_URL.split("/")[-1] != "test_db":
+    raise ValueError("USING NON-TEST DATABASE CONNECTION PARAMETERS. CHANGE THE \"DATABASE_URL\" PARAMETER "
+                     "IN THE .env FILE")
 
 defect_1_response_json = {
     "id": 1,
@@ -103,24 +44,22 @@ defect_1_response_json = {
     "longitudinal_position": 10,
     "transverse_position": 10,
     "probability": 90,
-    "is_critical": False,
-    "is_extreme": True,
-    "base64_photo": b64encode("photo1".encode()).decode()
+    "criticality": "extreme",
+    "base64_photo": b64encode(open("application/test_defect.jpg", "rb").read()).decode()
 }
 
 defect_2_response_json = {
     "id": 2,
     "timestamp": datetime(2025, 1, 2).strftime("%Y-%m-%dT%H:%M:%S"),
-    "type": "tear",
+    "type": "rope",
     "is_on_belt": True,
     "box_width_in_mm": 500,
     "box_length_in_mm": 500,
     "longitudinal_position": 10,
     "transverse_position": 10,
     "probability": 95,
-    "is_critical": True,
-    "is_extreme": False,
-    "base64_photo": b64encode("photo2".encode()).decode()
+    "criticality": "critical",
+    "base64_photo": b64encode(open("application/test_defect.jpg", "rb").read()).decode()
 }
 
 
@@ -145,7 +84,9 @@ def test_get_defects_of_existing_type():
 
 def test_get_defects_of_non_existing_type():
     response = client.get("/defect_info/type=wrong_type")
-    assert response.status_code == 404
+    data = response.json()
+    assert response.status_code == 200
+    assert len(data) == 0
 
 
 def test_get_critical_defects():
