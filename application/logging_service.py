@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import requests
 
 from fastapi import APIRouter, HTTPException
@@ -63,7 +64,8 @@ def get_log_records_of_certain_type(log_type: str):
 def create_log_record_by_type_and_text(log_type: str, log_text: str):
     with Session(engine) as session:
         log_record_object_type = session.exec(select(ObjectType).where(ObjectType.name == "history")).one()
-        base_object_for_new_log_record = Object(type_object=log_record_object_type)
+        base_object_for_new_log_record = Object(type_object=log_record_object_type,
+                                                time=datetime.now(timezone.utc).replace(tzinfo=None))
         session.add(base_object_for_new_log_record)
         log_type_object = session.exec(select(LogType).where(LogType.name == log_type)).first()
         if not log_type_object:
@@ -84,7 +86,7 @@ def delete_log_record_by_id(log_id: int):
         log = session.exec(select(Log).where(Log.id == log_id)).first()
         if not log:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
                 f"Failed to remove log record with id={log_id}: record not found"})
             raise HTTPException(status_code=404, detail=f"There is no log record with id={log_id}")
         response = form_response_model_from_log(log)

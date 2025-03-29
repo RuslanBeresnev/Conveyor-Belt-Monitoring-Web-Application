@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import requests
 
 from fastapi import APIRouter, status
@@ -66,7 +67,8 @@ def determine_criticality_of_conveyor_status(conveyor_status: ConveyorStatus):
 def create_record_of_current_general_conveyor_status():
     with Session(engine) as session:
         conv_status_object_type = session.exec(select(ObjectType).where(ObjectType.name == "conv_state")).one()
-        base_object_for_new_conv_status = Object(type_object=conv_status_object_type)
+        base_object_for_new_conv_status = Object(type_object=conv_status_object_type,
+                                                 time=datetime.now(timezone.utc).replace(tzinfo=None))
         current_conv_status = ConveyorStatus(base_object=base_object_for_new_conv_status)
 
         critical_defects = requests.get("http://127.0.0.1:8000/defect_info/critical").json()
@@ -85,10 +87,11 @@ def create_record_of_current_general_conveyor_status():
         session.commit()
         session.refresh(current_conv_status)
 
+        current_status = determine_criticality_of_conveyor_status(current_conv_status)
         # Action logging
         requests.post(url="http://127.0.0.1:8000/logs/create_record",
-                      params={"log_type": "state_of_devices", "log_text": f"Current general status of conveyor is "
-                                          f"\"{determine_criticality_of_conveyor_status(current_conv_status)}\""})
+                      params={"log_type": "state_of_devices", "log_text": f"Set current general status of conveyor: "
+                                                                          f"\"{current_status}\""})
 
         response = form_response_model_from_conveyor_status(current_conv_status)
         return response

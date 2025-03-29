@@ -193,7 +193,7 @@ def create_relation_between_two_defects_without_chain_checking(previous_defect_i
     with Session(engine) as session:
         if previous_defect_id == current_defect_id:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
                 f"Failed to create relation for a defect with oneself (id={current_defect_id})"})
             raise HTTPException(status_code=403, detail="It is forbidden to create relation for a defect with oneself")
 
@@ -201,7 +201,7 @@ def create_relation_between_two_defects_without_chain_checking(previous_defect_i
         current_defect = session.exec(select(Defect).where(Defect.id == current_defect_id)).first()
         if not previous_defect or not current_defect:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
                 f"Failed to create relation between defects with id={previous_defect_id} and id={current_defect_id}: "
                 f"id not found"})
             raise HTTPException(status_code=404, detail=f"There are no defects with id={previous_defect_id} or with "
@@ -226,7 +226,7 @@ def remove_relation_between_two_defects_without_chain_checking(previous_defect_i
     with (Session(engine) as session):
         if previous_defect_id == current_defect_id:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
                 f"Failed to remove relation for a defect with oneself (id={current_defect_id})"})
             raise HTTPException(status_code=403, detail="It is forbidden to remove relation for a defect with oneself")
 
@@ -234,7 +234,7 @@ def remove_relation_between_two_defects_without_chain_checking(previous_defect_i
         relation_for_previous = session.exec(select(Relation).where(Relation.id_previous == previous_defect_id)).first()
         if not relation_for_current or not relation_for_previous or relation_for_current != relation_for_previous:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
                 f"Failed to remove relation between defects with id={previous_defect_id} and id={current_defect_id}:"
                 f"id not found or defects not related"})
             raise HTTPException(status_code=404, detail=f"Either there are no defects with id={previous_defect_id} and "

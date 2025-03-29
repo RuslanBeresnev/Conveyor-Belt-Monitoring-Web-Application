@@ -24,12 +24,13 @@ async def send_error_notification(subject: str, message: str):
     has turned out to be corrupted
     """
     async with AsyncClient() as client:
+        # Action logging
+        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
+            f"New undefined defect has appeared on the conveyor, but defect info has corrupted!"})
         await client.post(url="http://127.0.0.1:8000/notification/with_telegram",
                           params={"message": f"{subject}\n\n{message}"})
         await client.post(url="http://127.0.0.1:8000/notification/with_gmail",
                           params={"subject": subject, "text": message})
-        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-            f"New undefined defect has appeared on the conveyor, but defect info has corrupted!"})
 
 
 async def on_new_defect_notify_handler(connection, pid, channel, payload):
@@ -48,10 +49,6 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
     defect_to_text = "\n".join([f"{key} = {str(value)}" for (key, value) in
                                 formatted_defect.model_dump(exclude={"base64_photo"}).items()])
 
-    # New defect may cause changing of the general conveyor status
-    async with AsyncClient() as client:
-        await client.post("http://127.0.0.1:8000/conveyor_info/create_record")
-
     defect_photo = None
     try:
         defect_photo = BytesIO(base64.b64decode(formatted_defect.base64_photo))
@@ -62,17 +59,19 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
                                               f"Defect info:\n\n{defect_to_text}")
 
     async with AsyncClient() as client:
+        # Action logging
+        log_type = "warning" if criticality == "normal" else f"{criticality}_defect"
+        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": log_type, "log_text":
+            f"New {criticality}-level defect with id={json_payload["id"]} has appeared on the conveyor!"})
+        # New defect may cause changing of the general conveyor status
+        await client.post("http://127.0.0.1:8000/conveyor_info/create_record")
+        # Notification sending
         await client.post(url="http://127.0.0.1:8000/notification/with_telegram",
                           params={"message": message_header + "\n\n" + defect_to_text},
                           files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
         await client.post(url="http://127.0.0.1:8000/notification/with_gmail",
                           params={"subject": message_header, "text": f"Defect info:\n\n{defect_to_text}"},
                           files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
-        # Action logging
-        log_type = "warning" if criticality == "normal" else f"{criticality}_defect"
-        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": log_type, "log_text":
-            f"New {criticality} level defect with id={json_payload["id"]} has appeared on the conveyor!"})
-
 
 async def listen_for_new_defects():
     db_connection = await connect(settings.DATABASE_URL)
