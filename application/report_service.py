@@ -88,13 +88,21 @@ def convert_color_to_hex(color: Color):
 
 
 def send_report_as_notification(filename: str, caption: str):
-    # Sending generated report via Telegram
-    requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
-                  params={"message": caption}, files=[("attached_file", open(filename, "rb"))])
-    # Sending generated report via Gmail
-    requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
-                  params={"subject": caption, "text": ""},
-                  files=[("attached_file", open(filename, "rb"))])
+    try:
+        # Sending generated report via Telegram
+        telegram_response = requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                                          params={"message": caption}, files=[("attached_file", open(filename, "rb"))])
+        # Sending generated report via Gmail
+        gmail_response = requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                                       params={"subject": caption, "text": ""},
+                                       files=[("attached_file", open(filename, "rb"))])
+        telegram_response.raise_for_status()
+        gmail_response.raise_for_status()
+    except requests.HTTPError as e:
+        error_status_code = e.response.status_code
+        details = e.response.json().get("detail")
+        return error_status_code, details
+    return None, "Notifications successfully sent"
 
 
 @router.get(path="/", response_model=ServiceInfoResponseModel)
@@ -148,7 +156,11 @@ def upload_report_of_all_defects_in_pdf_format():
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the all defects in .pdf format has successfully generated"})
 
-    send_report_as_notification(filename=filename, caption="PDF-report of all defects")
+    # Report sending via Telegram and Gmail
+    error_status_code, details = send_report_as_notification(filename=filename, caption="PDF-report of all defects")
+    if error_status_code:
+        raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
+                                                                  f"error during notification sending: {details}")
 
     response = AllDefectsReportResponseModel(
         doc_type="pdf",
@@ -200,7 +212,12 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         f"Report of the defect with id={defect_id} in .pdf format has successfully generated"})
 
-    send_report_as_notification(filename=filename, caption=f"PDF-report of defect with id={defect_id}")
+    # Report sending via Telegram and Gmail
+    error_status_code, details = send_report_as_notification(filename=filename, caption=f"PDF-report of defect with "
+                                                                                        f"id={defect_id}")
+    if error_status_code:
+        raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
+                                                                  f"error during notification sending: {details}")
 
     response = OneDefectReportResponseModel(
         doc_type="pdf",
@@ -259,15 +276,12 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the conveyor parameters and status in .pdf format has successfully generated"})
 
-    send_report_as_notification(filename=filename, caption="PDF-report of conveyor parameters and status")
-    # Sending generated report via Telegram
-    requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
-                  params={"message": "PDF-report of conveyor parameters and status"},
-                  files=[("attached_file", open(filename, "rb"))])
-    # Sending generated report via Gmail
-    requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
-                  params={"subject": "PDF-report of conveyor parameters and status", "text": ""},
-                  files=[("attached_file", open(filename, "rb"))])
+    # Report sending via Telegram and Gmail
+    error_status_code, details = send_report_as_notification(filename=filename, caption="PDF-report of conveyor "
+                                                                                        "parameters and status")
+    if error_status_code:
+        raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
+                                                                  f"error during notification sending: {details}")
 
     response = ConveyorInfoReportResponseModel(
         doc_type="pdf",
@@ -295,7 +309,11 @@ def upload_report_of_all_defects_in_csv_format():
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the all defects in .csv format has successfully generated"})
 
-    send_report_as_notification(filename=filename, caption="CSV-report of all defects")
+    # Report sending via Telegram and Gmail
+    error_status_code, details = send_report_as_notification(filename=filename, caption="CSV-report of all defects")
+    if error_status_code:
+        raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
+                                                                  f"error during notification sending: {details}")
 
     response = AllDefectsReportResponseModel(
         doc_type="csv",
@@ -329,7 +347,12 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         f"Report of the defect with id={defect_id} in .csv format has successfully generated"})
 
-    send_report_as_notification(filename=filename, caption=f"CSV-report of defect with id={defect_id}")
+    # Report sending via Telegram and Gmail
+    error_status_code, details = send_report_as_notification(filename=filename, caption=f"CSV-report of defect with "
+                                                                                        f"id={defect_id}")
+    if error_status_code:
+        raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
+                                                                  f"error during notification sending: {details}")
 
     response = OneDefectReportResponseModel(
         doc_type="csv",
@@ -363,7 +386,12 @@ def upload_report_of_conveyor_parameters_and_status_in_csv_format():
     requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the conveyor parameters and status in .csv format has successfully generated"})
 
-    send_report_as_notification(filename=filename, caption="CSV-report of conveyor parameters and status")
+    # Report sending via Telegram and Gmail
+    error_status_code, details = send_report_as_notification(filename=filename, caption="CSV-report of conveyor "
+                                                                                        "parameters and status")
+    if error_status_code:
+        raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
+                                                                  f"error during notification sending: {details}")
 
     response = ConveyorInfoReportResponseModel(
         doc_type="csv",

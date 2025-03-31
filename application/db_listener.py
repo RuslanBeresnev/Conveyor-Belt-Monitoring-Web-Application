@@ -6,7 +6,7 @@ import binascii
 
 from fastapi import FastAPI
 from asyncio import create_task, sleep
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPStatusError
 from asyncpg import connect
 from sqlmodel import Session, select
 
@@ -27,10 +27,21 @@ async def send_error_notification(subject: str, message: str):
         # Action logging
         await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
             f"New undefined defect has appeared on the conveyor, but defect info has corrupted!"})
-        await client.post(url="http://127.0.0.1:8000/notification/with_telegram",
-                          params={"message": f"{subject}\n\n{message}"})
-        await client.post(url="http://127.0.0.1:8000/notification/with_gmail",
-                          params={"subject": subject, "text": message})
+
+        try:
+            telegram_response = await client.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                                                  params={"message": f"{subject}\n\n{message}"})
+            gmail_response = await client.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                                               params={"subject": subject, "text": message})
+            telegram_response.raise_for_status()
+            gmail_response.raise_for_status()
+        except HTTPStatusError as e:
+            details = e.response.json().get("detail")
+            # Sending the notification when a new defect appears is a very important feature, so it is better
+            # to terminate the application with an exception than to have the operator simply doesn't see
+            # the notification.
+            raise Exception("There were some errors when trying to send a notification via Telegram or Gmail.\n"
+                            f"Error info: {details}\n\nFailure notification info: {message}") from e
 
 
 async def on_new_defect_notify_handler(connection, pid, channel, payload):
@@ -63,15 +74,29 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
         log_type = "warning" if criticality == "normal" else f"{criticality}_defect"
         await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": log_type, "log_text":
             f"New {criticality}-level defect with id={json_payload["id"]} has appeared on the conveyor!"})
+
         # New defect may cause changing of the general conveyor status
         await client.post("http://127.0.0.1:8000/conveyor_info/create_record")
-        # Notification sending
-        await client.post(url="http://127.0.0.1:8000/notification/with_telegram",
-                          params={"message": message_header + "\n\n" + defect_to_text},
-                          files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
-        await client.post(url="http://127.0.0.1:8000/notification/with_gmail",
-                          params={"subject": message_header, "text": f"Defect info:\n\n{defect_to_text}"},
-                          files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
+
+        try:
+            # Notification sending
+            telegram_response = await client.post(url="http://127.0.0.1:8000/notification/with_telegram",
+                                                  params={"message": message_header + "\n\n" + defect_to_text},
+                                                  files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
+            gmail_response = await client.post(url="http://127.0.0.1:8000/notification/with_gmail",
+                                               params={"subject": message_header,
+                                                       "text": f"Defect info:\n\n{defect_to_text}"},
+                                               files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
+            telegram_response.raise_for_status()
+            gmail_response.raise_for_status()
+        except HTTPStatusError as e:
+            details = e.response.json().get("detail")
+            # Sending the notification when a new defect appears is a very important feature, so it is better
+            # to terminate the application with an exception than to have the operator simply doesn't see
+            # the notification.
+            raise Exception("There were some errors when trying to send a notification via Telegram or Gmail.\n"
+                            f"Error info: {details}\n\nNotification info:\n{message_header}\n{defect_to_text}") from e
+
 
 async def listen_for_new_defects():
     db_connection = await connect(settings.DATABASE_URL)
