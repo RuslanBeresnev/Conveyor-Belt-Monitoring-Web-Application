@@ -27,38 +27,56 @@ from .config import Settings
 from .api_models import (TelegramNotification, GmailNotification, ServiceInfoResponseModel,
                          TelegramNotificationResponseModel, GmailNotificationResponseModel)
 
-GOOGLE_CLIENT_SECRET_FILE = "client_secret.json"
-GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-
 router = APIRouter(prefix="/notification", tags=["Notification Service"])
 settings = Settings()
+
 telegram_bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+
+GOOGLE_CLIENT_SECRET_FILE = "client_secret.json"
+GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
 
 class NotificationSendingErrorMessage(Enum):
     INVALID_BOT_TOKEN = "Token for Telegram-bot is incorrect"
-    MESSAGE_FROM_USER_WAS_LONG_AGO = ("User has not sent a message to the bot for more than a day, "
-                                      "so the chat with the user is not registered and has not found")
+    CHAT_WITH_USER_IS_NOT_REGISTERED = ("User has not sent a message to the bot or it has been for more than a day ago,"
+                                        " so the chat with the user is not registered and has not found")
     TELEGRAM_ERROR = "Some error in Telegram API"
     INVALID_GMAIL_CLIENT_SECRET_FILE = "File 'client_secret.json' is incorrect"
     GMAIL_CLIENT_SECRET_FILE_ABSENCE = "File 'client_secret.json' does not exist"
 
 
+def write_telegram_user_name_and_chat_id_to_env_file(user_name, user_chat_id):
+    settings.TELEGRAM_USER_NAME = user_name
+    settings.TELEGRAM_USER_CHAT_ID = user_chat_id
+
+    settings_dump = settings.model_dump()
+    settings_to_text = "\n".join(
+        [f"{param_name} = \"{param_value}\"" for param_name, param_value in settings_dump.items()])
+
+    with open(".env", "w") as env:
+        env.write(settings_to_text)
+
+
 def get_user_chat_id_in_telegram():
     """
-    Returns a pair (<id>, <username>, <error_message>), where <id> is the id of the Telegram chat with the user who last
-    sent a message to the bot (the message must be sent during the day before server launch), <username> is unique user
-    nick seems like "@test_user" (without '@'), <error_message> gives information in the case of emergency situation.
+    Returns a tuple (<id>, <username>, <error_message>), where <id> is the id of the Telegram chat with the user
+    (if the user has once sent a message to the bot), <username> is unique user nick seems like "@test_user",
+    <error_message> gives information in the case of emergency situation.
     """
+    if settings.TELEGRAM_USER_NAME != "" and settings.TELEGRAM_USER_CHAT_ID != "":
+        return settings.TELEGRAM_USER_CHAT_ID, settings.TELEGRAM_USER_NAME, None
+
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getUpdates"
     response = requests.get(url, timeout=3)
     updates = response.json()
     if not updates["ok"]:
         return None, None, NotificationSendingErrorMessage.INVALID_BOT_TOKEN
     if len(updates["result"]) > 0:
-        return (updates["result"][-1]["message"]["chat"]["id"], updates["result"][-1]["message"]["chat"]["username"],
-                None)
-    return None, None, NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO
+        user_chat_id = updates["result"][-1]["message"]["chat"]["id"]
+        user_name = '@' + updates["result"][-1]["message"]["chat"]["username"]
+        write_telegram_user_name_and_chat_id_to_env_file(user_name, user_chat_id)
+        return user_chat_id, user_name, None
+    return None, None, NotificationSendingErrorMessage.CHAT_WITH_USER_IS_NOT_REGISTERED
 
 
 def authenticate():
@@ -120,7 +138,7 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
                                      attached_file: UploadFile | str = File(None)):
     async with httpx.AsyncClient() as client:
         telegram_notification_error_codes = {NotificationSendingErrorMessage.INVALID_BOT_TOKEN: 500,
-                                             NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO: 404}
+                                             NotificationSendingErrorMessage.CHAT_WITH_USER_IS_NOT_REGISTERED: 404}
         user_chat_id, username, error_message = get_user_chat_id_in_telegram()
 
         if user_chat_id is None:
@@ -149,11 +167,11 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
         # Action logging
         await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "action_info", "log_text":
             f"Notification with the text \"{notification.message}\" was successfully sent via Telegram to the user "
-            f"@{username}"})
+            f"{username}"})
 
         return TelegramNotificationResponseModel(
             notification_method="telegram_notification",
-            to_user='@' + username,
+            to_user=username,
             sent_message=notification.message,
             attached_file=attached_file.filename if attached_file != "" else None
         )
