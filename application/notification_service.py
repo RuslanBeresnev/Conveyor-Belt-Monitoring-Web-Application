@@ -40,8 +40,6 @@ class NotificationSendingErrorMessage(Enum):
     MESSAGE_FROM_USER_WAS_LONG_AGO = ("User has not sent a message to the bot for more than a day, "
                                       "so the chat with the user is not registered and has not found")
     TELEGRAM_ERROR = "Some error in Telegram API"
-    INVALID_GMAIL_TOKEN_FILE = "File 'token.json' is incorrect"
-    CREDENTIALS_REFRESHING_ERROR = "Credentials could not be refreshed"
     INVALID_GMAIL_CLIENT_SECRET_FILE = "File 'client_secret.json' is incorrect"
     GMAIL_CLIENT_SECRET_FILE_ABSENCE = "File 'client_secret.json' does not exist"
 
@@ -63,34 +61,51 @@ def get_user_chat_id_in_telegram():
     return None, None, NotificationSendingErrorMessage.MESSAGE_FROM_USER_WAS_LONG_AGO
 
 
-def authenticate_and_get_credentials():
+def authenticate():
     """
-    Gmail authentication using OAuth 2.0 (token expires in one hour after first authentication)
+    Gmail authentication using OAuth 2.0
+    """
+    try:
+        flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file=GOOGLE_CLIENT_SECRET_FILE,
+                                                         scopes=GOOGLE_SCOPES)
+        credentials = flow.run_local_server(port=0, access_type='offline', prompt='consent')
+    except ValueError:
+        return None, NotificationSendingErrorMessage.INVALID_GMAIL_CLIENT_SECRET_FILE
+    except FileNotFoundError:
+        return None, NotificationSendingErrorMessage.GMAIL_CLIENT_SECRET_FILE_ABSENCE
+    return credentials, None
+
+
+def get_credentials():
+    """
+    Retrieve credentials from "token.json" (a token expires in one hour) or create new token with credentials
     """
     credentials = None
+    error_message = None
+
     if exists("token.json"):
         try:
             credentials = Credentials.from_authorized_user_file(filename="token.json", scopes=GOOGLE_SCOPES)
         except ValueError:
-            return None, NotificationSendingErrorMessage.INVALID_GMAIL_TOKEN_FILE
-    if not credentials or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            try:
-                credentials.refresh(Request())
-            except RefreshError:
-                return None, NotificationSendingErrorMessage.CREDENTIALS_REFRESHING_ERROR
-        else:
-            try:
-                flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file=GOOGLE_CLIENT_SECRET_FILE,
-                                                                 scopes=GOOGLE_SCOPES)
-                credentials = flow.run_local_server(port=0)
-            except ValueError:
-                return None, NotificationSendingErrorMessage.INVALID_GMAIL_CLIENT_SECRET_FILE
-            except FileNotFoundError:
-                return None, NotificationSendingErrorMessage.GMAIL_CLIENT_SECRET_FILE_ABSENCE
+            # The corrupted token has to be regenerated
+            credentials, error_message = authenticate()
+        if credentials.expired:
+            if credentials.refresh_token:
+                try:
+                    credentials.refresh(Request())
+                except RefreshError:
+                    # RefreshError means that the refresh_token has expired and the usual token has to be regenerated
+                    credentials, error_message = authenticate()
+            else:
+                credentials, error_message = authenticate()
+    else:
+        credentials, error_message = authenticate()
+
+    if credentials:
         with open("token.json", "w", encoding="utf-8") as token:
             token.write(credentials.to_json())
-    return credentials, None
+
+    return credentials, error_message
 
 
 @router.get(path="/", response_model=ServiceInfoResponseModel)
@@ -174,7 +189,7 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
 
         formatted_message = {'raw': urlsafe_b64encode(message.as_bytes()).decode()}
 
-        credentials, error_message = authenticate_and_get_credentials()
+        credentials, error_message = get_credentials()
         if credentials is None:
             # Action logging
             await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
