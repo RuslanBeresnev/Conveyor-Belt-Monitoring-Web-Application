@@ -5,9 +5,9 @@ import requests
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select, and_
 
-from .database_connection import engine
-from .db_models import Object, DefectType, Defect, Relation
-from .api_models import ServiceInfoResponseModel, DefectResponseModel
+from application.db_connection import engine
+from application.models.db_models import Object, DefectType, Defect, Relation
+from application.models.api_models import ServiceInfoResponseModel, DefectResponseModel
 
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
 

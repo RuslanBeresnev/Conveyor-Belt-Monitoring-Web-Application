@@ -13,8 +13,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from .api_models import (ServiceInfoResponseModel, DefectResponseModel, AllDefectsReportResponseModel,
-                         OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
+from application.models.api_models import (ServiceInfoResponseModel, DefectResponseModel, AllDefectsReportResponseModel,
+                                           OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
 
 router = APIRouter(prefix="/report", tags=["Reports Generation Service"])
 

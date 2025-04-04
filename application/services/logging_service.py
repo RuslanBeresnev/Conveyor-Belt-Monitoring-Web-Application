@@ -4,9 +4,9 @@ import requests
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select, desc, text
 
-from .database_connection import engine
-from .db_models import ObjectType, Object, LogType, Log
-from .api_models import ServiceInfoResponseModel, LogResponseModel, AllLogsRemovingResponseModel
+from application.db_connection import engine
+from application.models.db_models import ObjectType, Object, LogType, Log
+from application.models.api_models import ServiceInfoResponseModel, LogResponseModel, AllLogsRemovingResponseModel
 
 router = APIRouter(prefix="/logs", tags=["Logging Service"])
 

@@ -1,13 +1,13 @@
 from fastapi import FastAPI, APIRouter
 
 from .db_listener import lifespan
-from .notification_service import router as notification_service_router
-from .defect_info_service import router as defect_info_service_router
-from .conveyor_info_service import router as conveyor_info_service_router
-from .logging_service import router as logging_service_router
-from .report_service import router as report_service_router
-from .maintenance_service import router as maintenance_service_router
-from .api_models import ServiceInfoResponseModel
+from application.services.notification_service import router as notification_service_router
+from application.services.defect_info_service import router as defect_info_service_router
+from application.services.conveyor_info_service import router as conveyor_info_service_router
+from application.services.logging_service import router as logging_service_router
+from application.services.report_service import router as report_service_router
+from application.services.maintenance_service import router as maintenance_service_router
+from application.models.api_models import ServiceInfoResponseModel
 
 api_router = APIRouter(prefix="/api/v1")
 

@@ -4,9 +4,9 @@ import requests
 from fastapi import APIRouter, status
 from sqlmodel import Session, select, desc
 
-from .database_connection import engine
-from .db_models import ObjectType, Object, ConveyorParameters, ConveyorStatus
-from .api_models import ServiceInfoResponseModel, ConveyorParametersResponseModel, ConveyorStatusResponseModel
+from application.db_connection import engine
+from application.models.db_models import ObjectType, Object, ConveyorParameters, ConveyorStatus
+from application.models.api_models import ServiceInfoResponseModel, ConveyorParametersResponseModel, ConveyorStatusResponseModel
 
 router = APIRouter(prefix="/conveyor_info", tags=["Conveyor General Information Service"])
 

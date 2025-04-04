@@ -23,9 +23,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from .config import Settings
-from .api_models import (TelegramNotification, GmailNotification, ServiceInfoResponseModel,
-                         TelegramNotificationResponseModel, GmailNotificationResponseModel)
+from application.config import Settings
+from application.models.api_models import (TelegramNotification, GmailNotification, ServiceInfoResponseModel,
+                                           TelegramNotificationResponseModel, GmailNotificationResponseModel)
 
 router = APIRouter(prefix="/notification", tags=["Notification Service"])
 settings = Settings()

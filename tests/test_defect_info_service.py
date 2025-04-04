@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from application.main import application
-from application.database_connection import engine, settings
+from application.db_connection import engine, settings
 
 # Before running the tests, you need to change the DATABASE_URL value in the .env file to the test one.
 # !!! If there is <requests.exceptions.ConnectionError> - increase <time.sleep(...)> value !!!

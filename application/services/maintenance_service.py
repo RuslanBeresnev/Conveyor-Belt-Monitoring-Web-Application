@@ -4,10 +4,10 @@ import requests
 from fastapi import APIRouter, HTTPException
 from sqlmodel import SQLModel, Session, select, text
 
-from .db_models import (ObjectType, Object, DefectType, Photo, Defect, Relation, ConveyorParameters,
-                        ConveyorStatus, LogType, Log, Version, CameraSettings)
-from .database_connection import engine
-from .api_models import ServiceInfoResponseModel, MaintenanceActionResponseModel, NewConveyorParameters
+from application.models.db_models import (ObjectType, Object, DefectType, Photo, Defect, Relation, ConveyorParameters,
+                                          LogType, Version)
+from application.db_connection import engine
+from application.models.api_models import ServiceInfoResponseModel, MaintenanceActionResponseModel, NewConveyorParameters
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"])
 

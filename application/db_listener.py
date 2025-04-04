@@ -11,9 +11,9 @@ from asyncpg import connect
 from sqlmodel import Session, select
 
 from .config import Settings
-from .database_connection import engine
-from .db_models import Defect
-from .defect_info_service import form_response_model_from_defect, determine_defect_criticality
+from .db_connection import engine
+from application.models.db_models import Defect
+from application.services.defect_info_service import form_response_model_from_defect, determine_defect_criticality
 
 settings = Settings()
 
