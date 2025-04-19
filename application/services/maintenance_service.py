@@ -7,7 +7,8 @@ from sqlmodel import SQLModel, Session, select, text
 from application.models.db_models import (ObjectType, Object, DefectType, Photo, Defect, Relation, ConveyorParameters,
                                           LogType, Version)
 from application.db_connection import engine
-from application.models.api_models import ServiceInfoResponseModel, MaintenanceActionResponseModel, NewConveyorParameters
+from application.models.api_models import ServiceInfoResponseModel, MaintenanceActionResponseModel, \
+    NewConveyorParameters
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"])
 
@@ -32,22 +33,27 @@ def create_or_recreate_all_database_tables(test_mode: bool = False):
 
     # Creating trigger and trigger function for the table "defects" (apart the case when running in the test mode)
     raw_sql = """
-    CREATE OR REPLACE FUNCTION notify_on_new_defect()
+              CREATE
+              OR REPLACE FUNCTION notify_on_new_defect()
     RETURNS TRIGGER AS $$
     DECLARE
-        payload TEXT;
-    BEGIN
-        payload := row_to_json(NEW)::TEXT;
-        PERFORM pg_notify('new_defect', payload);
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
+              payload TEXT;
+              BEGIN
+        payload
+              := row_to_json(NEW)::TEXT;
+        PERFORM
+              pg_notify('new_defect', payload);
+              RETURN NEW;
+              END;
+    $$
+              LANGUAGE plpgsql;
 
-    CREATE TRIGGER trigger_on_new_defect
-    AFTER INSERT ON defects
-    FOR EACH ROW
-    EXECUTE FUNCTION notify_on_new_defect();
-    """
+              CREATE TRIGGER trigger_on_new_defect
+                  AFTER INSERT
+                  ON defects
+                  FOR EACH ROW
+                  EXECUTE FUNCTION notify_on_new_defect(); \
+              """
     if not test_mode:
         with Session(engine) as session:
             session.connection().execute(text(raw_sql))
@@ -107,8 +113,8 @@ def fill_database_with_required_and_test_data():
         session.add(object_of_photo_1)
         session.add(object_of_photo_2)
 
-        photo_1 = Photo(base_object=object_of_photo_1, image=open("application/test_defect.jpg", "rb").read())
-        photo_2 = Photo(base_object=object_of_photo_2, image=open("application/test_defect.jpg", "rb").read())
+        photo_1 = Photo(base_object=object_of_photo_1, image=open("application/services/test_defect.jpg", "rb").read())
+        photo_2 = Photo(base_object=object_of_photo_2, image=open("application/services/test_defect.jpg", "rb").read())
         session.add(photo_1)
         session.add(photo_2)
 
@@ -148,7 +154,7 @@ def fill_database_with_required_and_test_data():
         session.commit()
 
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "info", "log_text":
             "Database was filled with required fields and test defects"})
 
         return MaintenanceActionResponseModel(
@@ -180,7 +186,7 @@ def add_test_defect_to_database():
         session.commit()
 
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "info", "log_text":
             "New test defect was added to the database"})
 
         return MaintenanceActionResponseModel(
@@ -193,17 +199,19 @@ def create_relation_between_two_defects_without_chain_checking(previous_defect_i
     with Session(engine) as session:
         if previous_defect_id == current_defect_id:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
-                f"Failed to create relation for a defect with oneself (id={current_defect_id})"})
+            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "warning", "log_text": f"Failed to create relation for a defect with "
+                                                                     f"oneself (id={current_defect_id})"})
             raise HTTPException(status_code=403, detail="It is forbidden to create relation for a defect with oneself")
 
         previous_defect = session.exec(select(Defect).where(Defect.id == previous_defect_id)).first()
         current_defect = session.exec(select(Defect).where(Defect.id == current_defect_id)).first()
         if not previous_defect or not current_defect:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
-                f"Failed to create relation between defects with id={previous_defect_id} and id={current_defect_id}: "
-                f"id not found"})
+            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "warning", "log_text": "Failed to create relation between defects with "
+                                                                     f"id={previous_defect_id} and "
+                                                                     f"id={current_defect_id}: id not found"})
             raise HTTPException(status_code=404, detail=f"There are no defects with id={previous_defect_id} or with "
                                                         f"id={current_defect_id}")
 
@@ -212,7 +220,7 @@ def create_relation_between_two_defects_without_chain_checking(previous_defect_i
         session.commit()
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "info", "log_text":
         f"Relation between defect with id={previous_defect_id} and defect with id={current_defect_id} was created"})
 
     return MaintenanceActionResponseModel(
@@ -226,17 +234,20 @@ def remove_relation_between_two_defects_without_chain_checking(previous_defect_i
     with (Session(engine) as session):
         if previous_defect_id == current_defect_id:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
-                f"Failed to remove relation for a defect with oneself (id={current_defect_id})"})
+            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "warning", "log_text": "Failed to remove relation for a defect with "
+                                                                     f"oneself (id={current_defect_id})"})
             raise HTTPException(status_code=403, detail="It is forbidden to remove relation for a defect with oneself")
 
         relation_for_current = session.exec(select(Relation).where(Relation.id_current == current_defect_id)).first()
         relation_for_previous = session.exec(select(Relation).where(Relation.id_previous == previous_defect_id)).first()
         if not relation_for_current or not relation_for_previous or relation_for_current != relation_for_previous:
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "warning", "log_text":
-                f"Failed to remove relation between defects with id={previous_defect_id} and id={current_defect_id}:"
-                f"id not found or defects not related"})
+            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "warning", "log_text": "Failed to remove relation between defects with "
+                                                                     f"id={previous_defect_id} and id="
+                                                                     f"{current_defect_id}: id not found or defects not"
+                                                                     " related"})
             raise HTTPException(status_code=404, detail=f"Either there are no defects with id={previous_defect_id} and "
                                                         f"with id={current_defect_id} or these ones aren't related")
 
@@ -244,7 +255,7 @@ def remove_relation_between_two_defects_without_chain_checking(previous_defect_i
         session.commit()
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "info", "log_text":
         f"Relation between defects with id={previous_defect_id} and id={current_defect_id} was removed"})
 
     return MaintenanceActionResponseModel(
@@ -264,7 +275,7 @@ def change_base_parameters_of_conveyor(new_parameters: NewConveyorParameters):
         session.commit()
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "info", "log_text":
         "Base parameters of the conveyor were updated"})
 
     return MaintenanceActionResponseModel(

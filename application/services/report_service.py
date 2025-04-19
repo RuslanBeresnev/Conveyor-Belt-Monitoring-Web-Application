@@ -36,9 +36,9 @@ def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo
             error_type = "Decoding error"
             error_text = "incorrect base64-encoded representation of the photo"
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record",
-                          params={"log_type": "error",
-                                  "log_text": f"Failed to generate table of the defects in pdf-report: {error_text}"})
+            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "error", "log_text": "Failed to generate table of the defects in "
+                                                                   f"pdf-report: {error_text}"})
             raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}")
         try:
             image_buffer = BytesIO(image_raw_data)
@@ -47,7 +47,7 @@ def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo
             error_type = "Unidentified image error"
             error_text = "raw representation of the photo is not bytes or has corrupted bytes sequence"
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/logs/create_record",
+            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
                           params={"log_type": "error",
                                   "log_text": f"Failed to generate table of the defects in pdf-report: {error_text}"})
             raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}")
@@ -90,10 +90,10 @@ def convert_color_to_hex(color: Color):
 def send_report_as_notification(filename: str, caption: str):
     try:
         # Sending generated report via Telegram
-        telegram_response = requests.post(url="http://127.0.0.1:8000/notification/with_telegram",
+        telegram_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
                                           params={"message": caption}, files=[("attached_file", open(filename, "rb"))])
         # Sending generated report via Gmail
-        gmail_response = requests.post(url="http://127.0.0.1:8000/notification/with_gmail",
+        gmail_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
                                        params={"subject": caption, "text": ""},
                                        files=[("attached_file", open(filename, "rb"))])
         telegram_response.raise_for_status()
@@ -116,7 +116,7 @@ def get_service_info():
 def upload_report_of_all_defects_in_pdf_format():
     filename = "report_of_all_defects.pdf"
     report_doc = SimpleDocTemplate(filename, pagesize=landscape(A4))
-    all_defects = requests.get("http://127.0.0.1:8000/defect_info/all").json()
+    all_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/all").json()
 
     # Paragraph style for header text line break
     header_style = getSampleStyleSheet()["Normal"]
@@ -136,8 +136,8 @@ def upload_report_of_all_defects_in_pdf_format():
     title_style.spaceAfter = 16
     title = Paragraph(f"REPORT ABOUT DEFECTS ({datetime.now().strftime("%d.%m.%Y - %H:%M")})", title_style)
 
-    extreme_defects = requests.get("http://127.0.0.1:8000/defect_info/extreme").json()
-    critical_defects = requests.get("http://127.0.0.1:8000/defect_info/critical").json()
+    extreme_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/extreme").json()
+    critical_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/critical").json()
 
     statistics_style = getSampleStyleSheet()["Normal"]
     general_statistics = ListFlowable(
@@ -153,7 +153,7 @@ def upload_report_of_all_defects_in_pdf_format():
     report_doc.build(elements)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the all defects in .pdf format has successfully generated"})
 
     # Report sending via Telegram and Gmail
@@ -176,10 +176,10 @@ def upload_report_of_all_defects_in_pdf_format():
 def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
     filename = f"report_of_defect_id_{defect_id}.pdf"
     report_doc = SimpleDocTemplate(filename, pagesize=A4)
-    response = requests.get(f"http://127.0.0.1:8000/defect_info/id={defect_id}")
+    response = requests.get(f"http://127.0.0.1:8000/api/v1/defect_info/id={defect_id}")
     if response.status_code == 404:
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
+        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "error", "log_text":
             f"Failed to generate report of the defect with id={defect_id}: defect not found"})
         raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
     defect = response.json()
@@ -209,7 +209,7 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
     report_doc.build(elements)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
         f"Report of the defect with id={defect_id} in .pdf format has successfully generated"})
 
     # Report sending via Telegram and Gmail
@@ -238,8 +238,8 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     title_style.spaceAfter = 32
     title = Paragraph(f"REPORT ABOUT CONVEYOR INFO ({datetime.now().strftime("%d.%m.%Y - %H:%M")})", title_style)
 
-    parameters = requests.get("http://127.0.0.1:8000/conveyor_info/parameters").json()
-    status = requests.get("http://127.0.0.1:8000/conveyor_info/status").json()
+    parameters = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/parameters").json()
+    status = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/status").json()
     status_text = None
     status_text_color = None
     if status["is_normal"]:
@@ -273,7 +273,7 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     report_doc.build(elements)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the conveyor parameters and status in .pdf format has successfully generated"})
 
     # Report sending via Telegram and Gmail
@@ -293,9 +293,9 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
 
 @router.post(path="/all/csv", response_model=AllDefectsReportResponseModel)
 def upload_report_of_all_defects_in_csv_format():
-    all_defects = requests.get("http://127.0.0.1:8000/defect_info/all").json()
-    extreme_defects = requests.get("http://127.0.0.1:8000/defect_info/extreme").json()
-    critical_defects = requests.get("http://127.0.0.1:8000/defect_info/critical").json()
+    all_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/all").json()
+    extreme_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/extreme").json()
+    critical_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/critical").json()
 
     csv_table_headers = ",".join([str(key) for key, value in all_defects[0].items()]) + "\n"
     csv_table_lines = [",".join([str(value) for key, value in defect.items()]) + "\n" for defect in all_defects]
@@ -306,7 +306,7 @@ def upload_report_of_all_defects_in_csv_format():
         output_file.writelines(line for line in csv_table_lines)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the all defects in .csv format has successfully generated"})
 
     # Report sending via Telegram and Gmail
@@ -327,10 +327,10 @@ def upload_report_of_all_defects_in_csv_format():
 
 @router.post(path="/id={defect_id}/csv", response_model=OneDefectReportResponseModel)
 def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
-    response = requests.get(f"http://127.0.0.1:8000/defect_info/id={defect_id}")
+    response = requests.get(f"http://127.0.0.1:8000/api/v1/defect_info/id={defect_id}")
     if response.status_code == 404:
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
+        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "error", "log_text":
             f"Failed to generate report of the defect with id={defect_id}: defect not found"})
         raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
     defect = response.json()
@@ -344,7 +344,7 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
         output_file.write(csv_defect_info)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
         f"Report of the defect with id={defect_id} in .csv format has successfully generated"})
 
     # Report sending via Telegram and Gmail
@@ -364,8 +364,8 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
 
 @router.post(path="/conveyor/csv", response_model=ConveyorInfoReportResponseModel)
 def upload_report_of_conveyor_parameters_and_status_in_csv_format():
-    parameters = requests.get("http://127.0.0.1:8000/conveyor_info/parameters").json()
-    status = requests.get("http://127.0.0.1:8000/conveyor_info/status").json()
+    parameters = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/parameters").json()
+    status = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/status").json()
     status_text = None
     if status["is_normal"]:
         status_text = "normal"
@@ -383,7 +383,7 @@ def upload_report_of_conveyor_parameters_and_status_in_csv_format():
         output_file.write(csv_conveyor_info)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "report_info", "log_text":
+    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
         "Report of the conveyor parameters and status in .csv format has successfully generated"})
 
     # Report sending via Telegram and Gmail

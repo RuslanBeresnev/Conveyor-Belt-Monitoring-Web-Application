@@ -25,13 +25,13 @@ async def send_error_notification(subject: str, message: str):
     """
     async with AsyncClient() as client:
         # Action logging
-        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
+        await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "error", "log_text":
             f"New undefined defect has appeared on the conveyor, but defect info has corrupted!"})
 
         try:
-            telegram_response = await client.post(url="http://127.0.0.1:8000/notification/with_telegram",
+            telegram_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
                                                   params={"message": f"{subject}\n\n{message}"})
-            gmail_response = await client.post(url="http://127.0.0.1:8000/notification/with_gmail",
+            gmail_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
                                                params={"subject": subject, "text": message})
             telegram_response.raise_for_status()
             gmail_response.raise_for_status()
@@ -72,18 +72,18 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
     async with AsyncClient() as client:
         # Action logging
         log_type = "warning" if criticality == "normal" else f"{criticality}_defect"
-        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": log_type, "log_text":
+        await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": log_type, "log_text":
             f"New {criticality}-level defect with id={json_payload["id"]} has appeared on the conveyor!"})
 
         # New defect may cause changing of the general conveyor status
-        await client.post("http://127.0.0.1:8000/conveyor_info/create_record")
+        await client.post("http://127.0.0.1:8000/api/v1/conveyor_info/create_record")
 
         try:
             # Notification sending
-            telegram_response = await client.post(url="http://127.0.0.1:8000/notification/with_telegram",
+            telegram_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
                                                   params={"message": message_header + "\n\n" + defect_to_text},
                                                   files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
-            gmail_response = await client.post(url="http://127.0.0.1:8000/notification/with_gmail",
+            gmail_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
                                                params={"subject": message_header,
                                                        "text": f"Defect info:\n\n{defect_to_text}"},
                                                files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})

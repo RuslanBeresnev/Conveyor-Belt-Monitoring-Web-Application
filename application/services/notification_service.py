@@ -143,8 +143,10 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
 
         if user_chat_id is None:
             # Action logging
-            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-                f"Error has occurred while sending notification via Telegram. Error info: \"{error_message.value}\""})
+            await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
+                                                                       "via Telegram. Error info: "
+                                                                       f"\"{error_message.value}\""})
             raise HTTPException(status_code=telegram_notification_error_codes[error_message],
                                 detail=error_message.value)
 
@@ -158,16 +160,18 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
                                                  caption=notification.message)
         except telegram.error.TelegramError as exception:
             # Action logging
-            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-                f"Error has occurred while sending notification via Telegram. Error info: "
-                f"\"{NotificationSendingErrorMessage.TELEGRAM_ERROR.value}\""})
+            await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
+                                                                       "via Telegram. Error info: "
+                                                                       f"\"{NotificationSendingErrorMessage.TELEGRAM_ERROR.value}\""})
             raise HTTPException(status_code=500,
                                 detail=NotificationSendingErrorMessage.TELEGRAM_ERROR.value) from exception
 
         # Action logging
-        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "action_info", "log_text":
-            f"Notification with the text \"{notification.message}\" was successfully sent via Telegram to the user "
-            f"{username}"})
+        await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "action_info", "log_text": "Notification with the text "
+                                                                         f"\"{notification.message}\" was successfully "
+                                                                         f"sent via Telegram to the user {username}"})
 
         return TelegramNotificationResponseModel(
             notification_method="telegram_notification",
@@ -210,16 +214,20 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
         credentials, error_message = get_credentials()
         if credentials is None:
             # Action logging
-            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-                f"Error has occurred while sending notification via Gmail. Error info: \"{error_message.value}\""})
+            await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
+                                                                       "via Gmail. Error info: "
+                                                                       f"\"{error_message.value}\""})
             raise HTTPException(status_code=403, detail=error_message.value)
 
         try:
             gmail_service = build(serviceName="gmail", version="v1", credentials=credentials)
         except DefaultCredentialsError as exception:
             # Action logging
-            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-                f"Error has occurred while sending notification via Gmail. Error info: \"{error_message.value}\""})
+            await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
+                                                                       "via Gmail. Error info: "
+                                                                       f"\"{error_message.value}\""})
             raise HTTPException(status_code=403, detail="Credentials not found or incorrect") from exception
 
         try:
@@ -227,19 +235,23 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
             gmail_service.users().messages().send(userId="me", body=formatted_message).execute()
         except HttpError as e:
             # Action logging
-            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-                f"Error has occurred while sending notification via Gmail. Error info: \"{e.error_details}\""})
+            await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
+                                                                       f"via Gmail. Error info: \"{e.error_details}\""})
             raise HTTPException(status_code=e.status_code, detail=e.error_details) from e
         except TypeError as e:
             # Action logging
-            await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "error", "log_text":
-                "Error has occurred while sending notification via Gmail: invalid message format"})
+            await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
+                                                                       "via Gmail: invalid message format"})
             raise HTTPException(status_code=500, detail="Invalid message format") from e
 
         # Action logging
-        await client.post(url="http://127.0.0.1:8000/logs/create_record", params={"log_type": "action_info", "log_text":
-            f"Notification with the subject \"{message["subject"]}\" was successfully sent via Gmail to the address "
-            f"{message["to"]}"})
+        await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "action_info", "log_text": "Notification with the subject "
+                                                                         f"\"{message["subject"]}\" was successfully "
+                                                                         "sent via Gmail to the address "
+                                                                         f"{message["to"]}"})
 
         return GmailNotificationResponseModel(
             notification_method="gmail_notification",

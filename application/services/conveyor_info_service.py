@@ -48,7 +48,7 @@ def get_general_status_of_conveyor():
     with Session(engine) as session:
         last_status_record = session.exec(select(ConveyorStatus).order_by(desc(ConveyorStatus.id))).first()
         if not last_status_record:
-            last_status_record = requests.post("http://127.0.0.1:8000/conveyor_info/create_record").json()
+            last_status_record = requests.post("http://127.0.0.1:8000/api/v1/conveyor_info/create_record").json()
             return last_status_record
         response = form_response_model_from_conveyor_status(last_status_record)
         return response
@@ -71,8 +71,8 @@ def create_record_of_current_general_conveyor_status():
                                                  time=datetime.now(timezone.utc).replace(tzinfo=None))
         current_conv_status = ConveyorStatus(base_object=base_object_for_new_conv_status)
 
-        critical_defects = requests.get("http://127.0.0.1:8000/defect_info/critical").json()
-        extreme_defects = requests.get("http://127.0.0.1:8000/defect_info/extreme").json()
+        critical_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/critical").json()
+        extreme_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/extreme").json()
         if len(critical_defects) > 0:
             current_conv_status.is_extreme = False
             current_conv_status.is_critical = True
@@ -89,7 +89,7 @@ def create_record_of_current_general_conveyor_status():
 
         current_status = determine_criticality_of_conveyor_status(current_conv_status)
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/logs/create_record",
+        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
                       params={"log_type": "state_of_devices", "log_text": f"Set current general status of conveyor: "
                                                                           f"\"{current_status}\""})
 
