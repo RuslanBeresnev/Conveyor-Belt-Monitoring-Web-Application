@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 
 from .db_listener import lifespan
 from application.services.notification_service import router as notification_service_router
@@ -20,6 +21,14 @@ api_router.include_router(maintenance_service_router)
 
 application = FastAPI(lifespan=lifespan)
 application.include_router(api_router)
+
+origins = ["http://localhost:3000"]
+application.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 
 @application.get(path="/api/v1", response_model=ServiceInfoResponseModel)
