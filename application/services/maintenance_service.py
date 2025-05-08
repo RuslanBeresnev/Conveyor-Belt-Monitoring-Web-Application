@@ -174,7 +174,7 @@ def add_test_defect_to_database():
         session.add(object_of_defect)
         session.add(object_of_photo)
 
-        photo = Photo(base_object=object_of_photo, image=open("application/test_defect.jpg", "rb").read())
+        photo = Photo(base_object=object_of_photo, image=open("application/services/test_defect.jpg", "rb").read())
         session.add(photo)
 
         defect = Defect(base_object=object_of_defect, type_object=object_of_defect_type, box_width=200,
