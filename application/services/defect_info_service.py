@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import requests
 
 from fastapi import APIRouter, HTTPException
-from sqlmodel import Session, select, and_
+from sqlmodel import Session, select, and_, not_
 
 from application.db_connection import engine
 from application.models.db_models import Object, DefectType, Defect, Relation
@@ -19,6 +19,16 @@ def determine_defect_criticality(defect: Defect):
         return "extreme"
     else:
         return "normal"
+
+
+def determine_criticality_select_condition(criticality: str):
+    if criticality == "critical":
+        return Defect.is_critical
+    elif criticality == "extreme":
+        return Defect.is_extreme
+    elif criticality == "normal":
+        return and_(not_(Defect.is_critical), not_(Defect.is_extreme))
+    return False
 
 
 def form_response_model_from_defect(defect: Defect):
@@ -96,6 +106,26 @@ def get_all_defects_in_certain_time_period(start_datetime: datetime = datetime.f
                                where(and_(start_datetime <= Object.time, Object.time <= end_datetime))
                                .order_by(Defect.id)).all()
         return [form_response_model_from_defect(defect) for defect, _ in results]
+
+
+@router.get(path="/filtered", response_model=list[DefectResponseModel])
+def get_filtered_defects_by_all_parameters(defect_type: str = "all", criticality: str = "all",
+                                           start_datetime: datetime = datetime.fromtimestamp(0, timezone.utc)
+                                           .replace(tzinfo=None),
+                                           end_datetime: datetime = datetime.now(timezone.utc).replace(tzinfo=None)):
+    type_select_condition = DefectType.name == defect_type
+    criticality_select_condition = determine_criticality_select_condition(criticality)
+    if defect_type == "all":
+        type_select_condition = True
+    if criticality == "all":
+        criticality_select_condition = True
+
+    with Session(engine) as session:
+        results = session.exec(select(Defect, Object, DefectType).join(Object).join(DefectType).
+                               where(and_(start_datetime <= Object.time, Object.time <= end_datetime,
+                                          type_select_condition, criticality_select_condition))
+                               .order_by(Defect.id)).all()
+        return [form_response_model_from_defect(defect) for defect, _, _ in results]
 
 
 @router.get(path="/id={current_defect_id}/previous", response_model=DefectResponseModel)
