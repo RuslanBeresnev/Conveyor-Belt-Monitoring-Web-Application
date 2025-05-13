@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
@@ -6,10 +6,14 @@ import MenuItem from "@mui/material/MenuItem";
 import DefectInfoService from "../../API/DefectInfoService";
 
 export default function Filters({setRows, setError}) {
-    const types = [
-        'chip', 'delamination', 'rope', 'crack', 'liftup', 'hole', 'tear', 'wear', 'joint', 'joint_worn'
-    ];
+    const [allTypes, setAllTypes] = useState([])
     const [type, setType] = useState('');
+
+    useEffect(() => {
+        DefectInfoService.getAllTypesOfDefects()
+            .then(response => setAllTypes(response.data.types))
+            .catch(error => setError(error));
+    }, [])
 
     const onFilterChange = async (event) => {
         try {
@@ -31,7 +35,7 @@ export default function Filters({setRows, setError}) {
                 onChange={onFilterChange}
             >
                 <MenuItem value='all'>All</MenuItem>
-                {types.map(type => (
+                {allTypes.map(type => (
                     <MenuItem value={type}>{type}</MenuItem>
                 ))}
             </Select>

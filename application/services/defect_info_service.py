@@ -7,7 +7,7 @@ from sqlmodel import Session, select, and_, not_
 
 from application.db_connection import engine
 from application.models.db_models import Object, DefectType, Defect, Relation
-from application.models.api_models import ServiceInfoResponseModel, DefectResponseModel
+from application.models.api_models import ServiceInfoResponseModel, DefectResponseModel, TypesOfDefectsResponseModel
 
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
 
@@ -126,6 +126,17 @@ def get_filtered_defects_by_all_parameters(defect_type: str = "all", criticality
                                           type_select_condition, criticality_select_condition))
                                .order_by(Defect.id)).all()
         return [form_response_model_from_defect(defect) for defect, _, _ in results]
+
+
+@router.get(path="/all_types", response_model=TypesOfDefectsResponseModel)
+def get_all_types_of_defects():
+    with (Session(engine) as session):
+        result = session.exec(select(DefectType)).all()
+        types = [defect_type.name for defect_type in result]
+        return TypesOfDefectsResponseModel(
+            count=len(result),
+            types=types
+        )
 
 
 @router.get(path="/id={current_defect_id}/previous", response_model=DefectResponseModel)

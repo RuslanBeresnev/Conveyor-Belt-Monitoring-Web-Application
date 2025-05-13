@@ -16,4 +16,12 @@ export default class DefectInfoService {
             throw error;
         }
     }
+
+    static getAllTypesOfDefects = async () => {
+        try {
+            return await axios.get('http://127.0.0.1:8000/api/v1/defect_info/all_types');
+        } catch (error) {
+            throw error;
+        }
+    }
 }

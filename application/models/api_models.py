@@ -49,6 +49,11 @@ class DefectResponseModel(BaseModel):
     base64_photo: str  # from Photo model (converted to base64 format)
 
 
+class TypesOfDefectsResponseModel(BaseModel):
+    count: int
+    types: list[str]
+
+
 class NewConveyorParameters(BaseModel):
     new_belt_length: int
     new_belt_width: int
