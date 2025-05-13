@@ -1,4 +1,4 @@
-import Defects from "../pages/Defects";
+import Defects from "../pages/Defects/Defects";
 import Conveyor from "../pages/Conveyor";
 import Logs from "../pages/Logs";
 import Settings from "../pages/Settings";
