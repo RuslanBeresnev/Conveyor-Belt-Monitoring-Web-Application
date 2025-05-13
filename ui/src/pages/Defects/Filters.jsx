@@ -1,13 +1,13 @@
 import {useEffect, useState} from 'react';
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
 import DefectInfoService from "../../API/DefectInfoService";
+import FilterSelect from "./FilterSelect";
 
 export default function Filters({setRows, setError}) {
     const [allTypes, setAllTypes] = useState([])
-    const [type, setType] = useState('');
+    const [type, setType] = useState('all');
+
+    const criticalityVariants = ['critical', 'extreme', 'normal']
+    const [criticality, setCriticality] = useState('all')
 
     useEffect(() => {
         DefectInfoService.getAllTypesOfDefects()
@@ -17,28 +17,21 @@ export default function Filters({setRows, setError}) {
 
     const onFilterChange = async (event) => {
         try {
-            setType(event.target.value);
-            const response = await DefectInfoService.getFilteredDefects(event.target.value);
+            const response = await DefectInfoService.getFilteredDefects(type, criticality);
             setRows(response.data);
         } catch (error) {
             setError(error);
         }
     }
 
+    useEffect(() => {
+        onFilterChange();
+    }, [type, criticality]);
+
     return (
-        <FormControl sx={{ marginTop: '15px', marginBottom: '10px', minWidth: 100 }} size='small'>
-            <InputLabel>Type</InputLabel>
-            <Select
-                variant='outlined'
-                value={type}
-                label='Type'
-                onChange={onFilterChange}
-            >
-                <MenuItem value='all'>All</MenuItem>
-                {allTypes.map(type => (
-                    <MenuItem value={type}>{type}</MenuItem>
-                ))}
-            </Select>
-        </FormControl>
+        <>
+            <FilterSelect label='Type' value={type} onChange={event => setType(event.target.value)} options={allTypes} />
+            <FilterSelect label='Criticality' value={criticality} onChange={event => setCriticality(event.target.value)} options={criticalityVariants} />
+        </>
     );
 };
