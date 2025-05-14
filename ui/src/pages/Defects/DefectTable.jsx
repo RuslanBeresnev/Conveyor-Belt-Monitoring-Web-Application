@@ -7,7 +7,7 @@ import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import TableBody from "@mui/material/TableBody";
 
-export default function DefectTable({rows}) {
+export default function DefectTable({ rows, setTabOpen, setSelectedDefect }) {
     const formatTimestamp = (isoTimestamp) => {
         const date = new Date(isoTimestamp);
         const formattedDate = date.toLocaleDateString('ru-RU');
@@ -26,6 +26,11 @@ export default function DefectTable({rows}) {
                 return 'text.primary';
         }
     };
+
+    const openDefectTab = (defect) => {
+        setSelectedDefect(defect);
+        setTabOpen(true);
+    }
 
     return (
         <TableContainer component={Paper} sx={{ marginTop: 1 }}>
@@ -47,6 +52,7 @@ export default function DefectTable({rows}) {
                                 '&:last-child td, &:last-child th': { border: 0 },
                                 '& td, & th': {color: getCriticalityColor(row.criticality)}
                             }}
+                            onClick={() => openDefectTab(row)}
                         >
                             <TableCell component="th" scope="row">
                                 {row.id}

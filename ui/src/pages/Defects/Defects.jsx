@@ -1,12 +1,16 @@
-import {useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {Alert} from "@mui/material";
 import DefectInfoService from "../../API/DefectInfoService";
 import DefectTable from "./DefectTable";
 import Filters from "./Filters";
+import DefectTab from "./DefectTab";
 
 export default function Defects() {
     const [rows, setRows] = useState([]);
     const [error, setError] = useState(null);
+
+    const [tabOpen, setTabOpen] = useState(false);
+    const [selectedDefect, setSelectedDefect] = useState(null);
 
     const loadRows = async () => {
         try {
@@ -31,7 +35,8 @@ export default function Defects() {
             ) : (
                 <>
                     <Filters setRows={setRows} setError={setError} />
-                    <DefectTable rows={rows} />
+                    <DefectTable rows={rows} setTabOpen={setTabOpen} setSelectedDefect={setSelectedDefect} />
+                    <DefectTab open={tabOpen} handleClose={() => setTabOpen(false)} defect={selectedDefect} />
                 </>
             )}
         </>
