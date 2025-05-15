@@ -1,5 +1,9 @@
 import {useEffect, useState} from "react";
 import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import Slide from '@mui/material/Slide';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -15,10 +19,12 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
+import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import DefectInfoService from "../../../API/DefectInfoService";
 
 export default function DefectTab({ open, handleClose, setError, defect, setSelectedDefect, setRows }) {
     const [chainOfPrevious, setChainOfPrevious] = useState([]);
+    const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
 
     const getChainOfPreviousDefects = async (id) => {
         try {
@@ -51,11 +57,18 @@ export default function DefectTab({ open, handleClose, setError, defect, setSele
             }
             const updatedDefect = { ...defect, criticality };
             setSelectedDefect(updatedDefect);
-            setRows(prevRows =>
-                prevRows.map(row =>
-                    row.id === updatedDefect.id ? updatedDefect : row
-                )
-            );
+            setRows(prevRows => prevRows.map(row => row.id === updatedDefect.id ? updatedDefect : row));
+        } catch (error) {
+            setError(error);
+        }
+    }
+
+    const deleteDefect = async () => {
+        try {
+            setDeletionDialogOpen(false);
+            await DefectInfoService.deleteDefect(defect.id);
+            setRows(prevRows => prevRows.filter(row => row.id !== defect.id));
+            handleClose();
         } catch (error) {
             setError(error);
         }
@@ -93,6 +106,32 @@ export default function DefectTab({ open, handleClose, setError, defect, setSele
                                     <MenuItem value="critical">Critical</MenuItem>
                                 </Select>
                             </FormControl>
+                            <IconButton
+                                sx={{ ml: 2 }}
+                                color="error"
+                                onClick={() => setDeletionDialogOpen(true)}
+                            >
+                                <DeleteForeverIcon fontSize="large" />
+                            </IconButton>
+                            <Dialog
+                                open={deletionDialogOpen}
+                                onClose={() => setDeletionDialogOpen(false)}
+                            >
+                                <DialogTitle>
+                                    Confirm deletion
+                                </DialogTitle>
+                                <DialogContent>
+                                    <DialogContentText>
+                                        Delete defect with ID = {defect.id}?
+                                    </DialogContentText>
+                                </DialogContent>
+                                <DialogActions>
+                                    <Button onClick={() => setDeletionDialogOpen(false)}>Cancel</Button>
+                                    <Button onClick={deleteDefect} color="error" variant="contained">
+                                        Delete
+                                    </Button>
+                                </DialogActions>
+                            </Dialog>
                         </Box>
                     </Grid>
                     <Grid item size={6}>

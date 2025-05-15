@@ -48,4 +48,12 @@ export default class DefectInfoService {
             throw error;
         }
     }
+
+    static deleteDefect = async (id) => {
+        try {
+            return await axios.delete(`http://127.0.0.1:8000/api/v1/defect_info/id=${id}/delete`);
+        } catch (error) {
+            throw error;
+        }
+    }
 }

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import {Alert} from "@mui/material";
 import DefectInfoService from "../../API/DefectInfoService";
 import DefectTable from "./DefectTable";
