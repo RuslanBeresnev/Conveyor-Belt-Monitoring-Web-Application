@@ -1,6 +1,6 @@
 import Paper from "@mui/material/Paper";
 
-export default function Photo({base64_photo}) {
+export default function DefectPhoto({base64_photo}) {
     return (
         <Paper
             elevation={3}
@@ -14,7 +14,7 @@ export default function Photo({base64_photo}) {
         >
             <img
                 src={`data:image/png;base64,${base64_photo}`}
-                alt="Photo of the defect"
+                alt="DefectPhoto of the defect"
                 style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
             />
         </Paper>
