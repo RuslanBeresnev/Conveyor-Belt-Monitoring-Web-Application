@@ -120,11 +120,11 @@ def fill_database_with_required_and_test_data():
 
         extreme_defect = Defect(base_object=object_of_defect_1, type_object=defect_type_hole, box_width=400,
                                 box_length=400, location_width_in_frame=10, location_length_in_frame=10,
-                                location_width_in_conv=10, location_length_in_conv=10, photo_object=photo_1,
+                                location_width_in_conv=216, location_length_in_conv=4870000, photo_object=photo_1,
                                 probability=90, is_critical=False, is_extreme=True)
         critical_defect = Defect(base_object=object_of_defect_2, type_object=defect_type_rope, box_width=500,
                                  box_length=500, location_width_in_frame=10, location_length_in_frame=10,
-                                 location_width_in_conv=10, location_length_in_conv=10, photo_object=photo_2,
+                                 location_width_in_conv=1530, location_length_in_conv=10516000, photo_object=photo_2,
                                  probability=95, is_critical=True, is_extreme=False)
         session.add(extreme_defect)
         session.add(critical_defect)
@@ -179,7 +179,7 @@ def add_test_defect_to_database():
 
         defect = Defect(base_object=object_of_defect, type_object=object_of_defect_type, box_width=200,
                         box_length=200, location_width_in_frame=5, location_length_in_frame=5,
-                        location_width_in_conv=5, location_length_in_conv=5, photo_object=photo,
+                        location_width_in_conv=450, location_length_in_conv=1210000, photo_object=photo,
                         probability=99, is_critical=False, is_extreme=False)
         session.add(defect)
 
