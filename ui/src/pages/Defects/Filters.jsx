@@ -4,7 +4,7 @@ import DefectInfoService from "../../API/DefectInfoService";
 import FilterSelect from "./FilterSelect";
 import DateIntervalSelect from "./DateIntervalSelect";
 
-export default function Filters({rows, setRows, setError}) {
+export default function Filters({setRows, setError}) {
     const [allTypes, setAllTypes] = useState([])
     const [type, setType] = useState('all');
 
@@ -33,7 +33,7 @@ export default function Filters({rows, setRows, setError}) {
 
     useEffect(() => {
         onFilterChange();
-    }, [type, criticality, fromDate, toDate, rows]);
+    }, [type, criticality, fromDate, toDate]);
 
     return (
         <Grid container>
