@@ -39,4 +39,13 @@ export default class DefectInfoService {
             throw error;
         }
     }
+
+    static setNewCriticalityOfDefect = async (id, is_extreme, is_critical) => {
+        try {
+            return await axios.put(`http://127.0.0.1:8000/api/v1/defect_info/id=${id}/set_criticality`, null,
+                {params: {is_extreme: is_extreme, is_critical: is_critical} });
+        } catch (error) {
+            throw error;
+        }
+    }
 }

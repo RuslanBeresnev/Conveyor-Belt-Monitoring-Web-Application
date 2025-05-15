@@ -34,14 +34,15 @@ export default function Defects() {
                 </Alert>
             ) : (
                 <>
-                    <Filters setRows={setRows} setError={setError} />
+                    <Filters rows={rows} setRows={setRows} setError={setError} />
                     <DefectTable rows={rows} setTabOpen={setTabOpen} setSelectedDefect={setSelectedDefect} />
                     <DefectTab
                         open={tabOpen}
                         handleClose={() => setTabOpen(false)}
+                        setError={setError}
                         defect={selectedDefect}
                         setSelectedDefect={setSelectedDefect}
-                        setError={setError}
+                        setRows={setRows}
                     />
                 </>
             )}

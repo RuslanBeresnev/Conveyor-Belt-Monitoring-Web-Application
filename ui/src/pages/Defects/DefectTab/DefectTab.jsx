@@ -11,17 +11,19 @@ import Grid from '@mui/material/Grid';
 import InfoTable from "./InfoTable";
 import Photo from "./Photo";
 import Button from "@mui/material/Button";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
 import DefectInfoService from "../../../API/DefectInfoService";
 
-export default function DefectTab({ open, handleClose, defect, setSelectedDefect, setError }) {
+export default function DefectTab({ open, handleClose, setError, defect, setSelectedDefect, setRows }) {
     const [chainOfPrevious, setChainOfPrevious] = useState([]);
 
     const getChainOfPreviousDefects = async (id) => {
         try {
             const response = await DefectInfoService.getChainOfPreviousDefectVariationsByDefectId(id);
-            if (response.status !== 404) {
-                setChainOfPrevious(response.data);
-            }
+            setChainOfPrevious(response.data);
         } catch (error) {
             setError(error);
         }
@@ -31,6 +33,33 @@ export default function DefectTab({ open, handleClose, defect, setSelectedDefect
         if (!defect) return;
         getChainOfPreviousDefects(defect.id);
     }, [defect]);
+
+    const setNewCriticalityOfDefect = async (criticality) => {
+        try {
+            switch (criticality) {
+                case 'critical':
+                    await DefectInfoService.setNewCriticalityOfDefect(defect.id, false, true);
+                    break;
+                case 'extreme':
+                    await DefectInfoService.setNewCriticalityOfDefect(defect.id, true, false);
+                    break;
+                case 'normal':
+                    await DefectInfoService.setNewCriticalityOfDefect(defect.id, false, false);
+                    break;
+                default:
+                    return;
+            }
+            const updatedDefect = { ...defect, criticality };
+            setSelectedDefect(updatedDefect);
+            setRows(prevRows =>
+                prevRows.map(row =>
+                    row.id === updatedDefect.id ? updatedDefect : row
+                )
+            );
+        } catch (error) {
+            setError(error);
+        }
+    }
 
     if (!defect) return null;
 
@@ -48,10 +77,23 @@ export default function DefectTab({ open, handleClose, defect, setSelectedDefect
                 </Toolbar>
             </AppBar>
 
-            <Box sx={{ p: 4 }}>
+            <Box sx={{ p: 4, pb: 2 }}>
                 <Grid container spacing={4}>
                     <Grid item size={6}>
                         <Photo base64_photo={defect.base64_photo} />
+                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                            <FormControl variant="outlined" sx={{ minWidth: 200 }} size='small'>
+                                <InputLabel>Set New Criticality</InputLabel>
+                                <Select
+                                    label="Set New Criticality"
+                                    onChange={event => setNewCriticalityOfDefect(event.target.value)}
+                                >
+                                    <MenuItem value="normal">Normal</MenuItem>
+                                    <MenuItem value="extreme">Extreme</MenuItem>
+                                    <MenuItem value="critical">Critical</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Box>
                     </Grid>
                     <Grid item size={6}>
                         <InfoTable defect={defect} />
