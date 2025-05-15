@@ -31,4 +31,12 @@ export default class DefectInfoService {
             throw error;
         }
     }
+
+    static getChainOfPreviousDefectVariationsByDefectId = async (id) => {
+        try {
+            return await axios.get(`http://127.0.0.1:8000/api/v1/defect_info/id=${id}/chain_of_previous`);
+        } catch (error) {
+            throw error;
+        }
+    }
 }

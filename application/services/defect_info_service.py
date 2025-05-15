@@ -154,13 +154,15 @@ def get_previous_variation_of_defect_by_id_of_current_one(current_defect_id: int
 @router.get(path="/id={current_defect_id}/chain_of_previous", response_model=list[DefectResponseModel])
 def get_chain_of_all_previous_variations_of_defect_by_id(current_defect_id: int):
     with Session(engine) as session:
-        current_defect = session.exec(select(Relation).where(Relation.id_current == current_defect_id)).first()
-        if not current_defect:
-            raise HTTPException(status_code=404, detail=f"There is no defect with id={current_defect_id} "
                                                         f"or previous variations for it")
+        if not defect:
+            raise HTTPException(status_code=404, detail=f"There is no defect with id={current_defect_id}")
+        current_defect_in_chain = session.exec(select(Relation).where(Relation.id_current == current_defect_id)).first()
+        if not current_defect_in_chain:
+            return []
 
         response = []
-        previous_defect = current_defect.previous_defect_object
+        previous_defect = current_defect_in_chain.previous_defect_object
         while True:
             response.append(form_response_model_from_defect(previous_defect))
             if not previous_defect.current_defect_in_relation:

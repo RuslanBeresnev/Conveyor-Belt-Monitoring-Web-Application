@@ -36,7 +36,13 @@ export default function Defects() {
                 <>
                     <Filters setRows={setRows} setError={setError} />
                     <DefectTable rows={rows} setTabOpen={setTabOpen} setSelectedDefect={setSelectedDefect} />
-                    <DefectTab open={tabOpen} handleClose={() => setTabOpen(false)} defect={selectedDefect} />
+                    <DefectTab
+                        open={tabOpen}
+                        handleClose={() => setTabOpen(false)}
+                        defect={selectedDefect}
+                        setSelectedDefect={setSelectedDefect}
+                        setError={setError}
+                    />
                 </>
             )}
         </>
