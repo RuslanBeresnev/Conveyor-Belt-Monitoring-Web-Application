@@ -6,27 +6,9 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import TableBody from "@mui/material/TableBody";
+import DefectInfoUtils from '../../utils/DefectInfoUtils';
 
 export default function DefectTable({ rows, setTabOpen, setSelectedDefect }) {
-    const formatTimestamp = (isoTimestamp) => {
-        const date = new Date(isoTimestamp);
-        const formattedDate = date.toLocaleDateString('ru-RU');
-        const formattedTime = date.toLocaleTimeString('ru-RU');
-        return `${formattedDate} - ${formattedTime}`;
-    };
-
-    const getCriticalityColor = (level) => {
-        switch (level) {
-            case 'critical':
-                return 'error.main';
-            case 'extreme':
-                return 'warning.main';
-            case 'normal':
-            default:
-                return 'text.primary';
-        }
-    };
-
     const openDefectTab = (defect) => {
         setSelectedDefect(defect);
         setTabOpen(true);
@@ -50,7 +32,7 @@ export default function DefectTable({ rows, setTabOpen, setSelectedDefect }) {
                             hover
                             sx={{
                                 '&:last-child td, &:last-child th': { border: 0 },
-                                '& td, & th': {color: getCriticalityColor(row.criticality)}
+                                '& td, & th': {color: DefectInfoUtils.getCriticalityColor(row.criticality)}
                             }}
                             onClick={() => openDefectTab(row)}
                         >
@@ -59,7 +41,7 @@ export default function DefectTable({ rows, setTabOpen, setSelectedDefect }) {
                             </TableCell>
                             <TableCell align='left'>{row.type}</TableCell>
                             <TableCell  align='left'>{row.criticality}</TableCell>
-                            <TableCell align='left'>{formatTimestamp(row.timestamp)}</TableCell>
+                            <TableCell align='left'>{DefectInfoUtils.formatTimestamp(row.timestamp)}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
