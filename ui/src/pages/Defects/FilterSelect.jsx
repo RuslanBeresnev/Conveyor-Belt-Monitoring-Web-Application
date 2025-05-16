@@ -5,7 +5,7 @@ import MenuItem from "@mui/material/MenuItem";
 
 export default function FilterSelect({label, value, options, onChange}) {
     return (
-        <FormControl sx={{ marginTop: '15px', marginBottom: '10px', marginRight: '15px', minWidth: 125 }} size='small'>
+        <FormControl sx={{ mt: 2, mb: 1, mr: 2, minWidth: 125 }} size='small'>
             <InputLabel>{label}</InputLabel>
             <Select
                 variant='outlined'

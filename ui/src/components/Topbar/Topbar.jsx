@@ -1,10 +1,10 @@
-import * as React from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import MenuIcon from '@mui/icons-material/Menu';
+import DownloadReportButtons from "./DownloadReportButtons";
 
 export default function Topbar({onMenuClick, currentSection}) {
     return (
@@ -24,6 +24,11 @@ export default function Topbar({onMenuClick, currentSection}) {
                     <Typography variant="h6" component="div" sx={{flexGrow: 1}}>
                         {currentSection}
                     </Typography>
+                    <>
+                        {(currentSection === 'Defects' || currentSection === 'Conveyor') &&
+                            <DownloadReportButtons currentSection={currentSection} />
+                        }
+                    </>
                 </Toolbar>
             </AppBar>
         </Box>

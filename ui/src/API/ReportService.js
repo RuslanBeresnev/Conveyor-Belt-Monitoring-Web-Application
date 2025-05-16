@@ -12,4 +12,28 @@ export default class ReportService {
             throw error;
         }
     }
+
+    static downloadReportOfAllDefects = async (report_type='pdf') => {
+        try {
+            if (report_type === 'pdf') {
+                return await axios.post(`http://127.0.0.1:8000/api/v1/report/all/pdf`);
+            } else if (report_type === 'csv') {
+                return await axios.post(`http://127.0.0.1:8000/api/v1/report/all/csv`);
+            }
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    static downloadReportOfConveyorStateAndParameters = async (report_type='pdf') => {
+        try {
+            if (report_type === 'pdf') {
+                return await axios.post(`http://127.0.0.1:8000/api/v1/report/conveyor/pdf`);
+            } else if (report_type === 'csv') {
+                return await axios.post(`http://127.0.0.1:8000/api/v1/report/conveyor/csv`);
+            }
+        } catch (error) {
+            throw error;
+        }
+    }
 }
