@@ -2,6 +2,7 @@ import base64
 from datetime import datetime
 from io import BytesIO
 import binascii
+import json
 
 import PIL
 import requests
@@ -100,7 +101,7 @@ def send_report_as_notification(filename: str, caption: str):
         gmail_response.raise_for_status()
     except requests.HTTPError as e:
         error_status_code = e.response.status_code
-        details = e.response.json().get("detail")
+        details = json.loads(e.response.text).get("detail")
         return error_status_code, details
     return None, "Notifications successfully sent"
 
