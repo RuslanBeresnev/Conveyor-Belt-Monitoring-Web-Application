@@ -1,4 +1,4 @@
-import * as React from 'react';
+import {useNavigate, useLocation} from "react-router";
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import List from '@mui/material/List';
@@ -10,16 +10,14 @@ import NewReleasesIcon from '@mui/icons-material/NewReleases';
 import ConveyorBeltIcon from '@mui/icons-material/ConveyorBelt';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import SettingsIcon from '@mui/icons-material/Settings';
-import {useNavigate, useLocation} from "react-router";
 
-export default function Sidebar({open, setOpen, setCurrentSection}) {
+export default function Sidebar({open, setOpen}) {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const transitToSection = (path, sectionTitle) => {
+    const transitToSection = (path) => {
         setOpen(false)
         navigate(path)
-        setCurrentSection(sectionTitle)
     }
 
     const buttons = [
@@ -36,7 +34,7 @@ export default function Sidebar({open, setOpen, setCurrentSection}) {
                     const isActive = location.pathname === path;
                     return (
                         <ListItem key={title} disablePadding>
-                            <ListItemButton onClick={() => transitToSection(path, title)} selected={isActive}>
+                            <ListItemButton onClick={() => transitToSection(path)} selected={isActive}>
                                 <ListItemIcon>
                                     {icon}
                                 </ListItemIcon>
