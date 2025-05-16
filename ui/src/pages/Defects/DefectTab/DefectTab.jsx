@@ -9,6 +9,7 @@ import DefectInfoTable from "./DefectInfoTable";
 import DefectPhoto from "./DefectPhoto";
 import DefectOptions from "./DefectOptions";
 import ChainOfPreviousSection from "./ChainOfPreviousSection";
+import DownloadReportButtons from "./DownloadReportButtons";
 
 export default function DefectTab({ open, handleClose, setError, defect, setSelectedDefect, setRows }) {
     const [chainOfPrevious, setChainOfPrevious] = useState([]);
@@ -52,10 +53,8 @@ export default function DefectTab({ open, handleClose, setError, defect, setSele
                     </Grid>
                     <Grid item size={6}>
                         <DefectInfoTable defect={defect} />
-                        <ChainOfPreviousSection
-                            chainOfPrevious={chainOfPrevious}
-                            setSelectedDefect={setSelectedDefect}
-                        />
+                        <ChainOfPreviousSection chainOfPrevious={chainOfPrevious} setSelectedDefect={setSelectedDefect} />
+                        <DownloadReportButtons defect_id={defect.id} setError={setError} />
                     </Grid>
                 </Grid>
             </Box>
