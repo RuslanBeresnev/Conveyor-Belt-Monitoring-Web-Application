@@ -3,8 +3,9 @@ import {Grid} from "@mui/material";
 import DefectInfoService from "../../API/DefectInfoService";
 import FilterSelect from "./FilterSelect";
 import DateIntervalSelect from "./DateIntervalSelect";
+import {useError} from "../../context/ErrorContext";
 
-export default function Filters({setRows, setError}) {
+export default function Filters({setRows}) {
     const [allTypes, setAllTypes] = useState([])
     const [type, setType] = useState('all');
 
@@ -14,10 +15,12 @@ export default function Filters({setRows, setError}) {
     const [fromDate, setFromDate] = useState(null)
     const [toDate, setToDate] = useState(null)
 
+    const {showError} = useError();
+
     useEffect(() => {
         DefectInfoService.getAllTypesOfDefects()
             .then(response => setAllTypes(response.data.types))
-            .catch(error => setError(error));
+            .catch(error => showError(error, "All types of defect for \"Type\" filter select fetching error"));
     }, [])
 
     const onFilterChange = async (event) => {
@@ -27,7 +30,7 @@ export default function Filters({setRows, setError}) {
             );
             setRows(response.data);
         } catch (error) {
-            setError(error);
+            showError(error, "Filtered defects fetching error");
         }
     }
 

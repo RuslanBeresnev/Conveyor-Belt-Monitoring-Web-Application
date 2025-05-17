@@ -3,10 +3,12 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import TableViewIcon from "@mui/icons-material/TableView";
+import {useError} from "../../context/ErrorContext";
 import ReportService from "../../API/ReportService";
 
 export default function DownloadReportButtons({currentSection}) {
     const [disableButtons, setDisableButtons] = useState(false);
+    const {showError} = useError();
 
     const downloadReport = async (report_type) => {
         setDisableButtons(true);
@@ -18,7 +20,7 @@ export default function DownloadReportButtons({currentSection}) {
                 await ReportService.downloadReportOfConveyorStateAndParameters(report_type);
             }
         } catch (error) {
-            console.log(error);
+            showError(error, "Report downloading error");
         }
     }
 

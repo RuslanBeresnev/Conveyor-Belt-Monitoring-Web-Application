@@ -12,10 +12,12 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import IconButton from "@mui/material/IconButton";
+import {useError} from "../../../context/ErrorContext";
 import DefectInfoService from "../../../API/DefectInfoService";
 
-export default function DefectOptions({defect, setSelectedDefect, setRows, setError, handleClose}) {
+export default function DefectOptions({defect, setSelectedDefect, setRows, handleClose}) {
     const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
+    const {showError} = useError();
 
     const setNewCriticalityOfDefect = async (criticality) => {
         try {
@@ -36,7 +38,7 @@ export default function DefectOptions({defect, setSelectedDefect, setRows, setEr
             setSelectedDefect(updatedDefect);
             setRows(prevRows => prevRows.map(row => row.id === updatedDefect.id ? updatedDefect : row));
         } catch (error) {
-            setError(error);
+            showError(error, "Criticality changing error");
         }
     }
 
@@ -47,7 +49,7 @@ export default function DefectOptions({defect, setSelectedDefect, setRows, setEr
             setRows(prevRows => prevRows.filter(row => row.id !== defect.id));
             handleClose();
         } catch (error) {
-            setError(error);
+            showError(error, "Defect deletion error");
         }
     }
 

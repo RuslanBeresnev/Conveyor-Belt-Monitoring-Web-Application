@@ -1,13 +1,13 @@
 import {useEffect, useState} from "react";
-import {Alert} from "@mui/material";
 import DefectInfoService from "../../API/DefectInfoService";
 import DefectTable from "./DefectTable";
 import Filters from "./Filters";
 import DefectTab from "./DefectTab/DefectTab";
+import {useError} from "../../context/ErrorContext";
 
 export default function Defects() {
     const [rows, setRows] = useState([]);
-    const [error, setError] = useState(null);
+    const {showError} = useError();
 
     const [tabOpen, setTabOpen] = useState(false);
     const [selectedDefect, setSelectedDefect] = useState(null);
@@ -16,9 +16,8 @@ export default function Defects() {
         try {
             const response = await DefectInfoService.getAllDefects();
             setRows(response.data);
-            setError(null);
         } catch (error) {
-            setError(error);
+            showError(error, "Table of defects fetching error");
         }
     };
 
@@ -28,24 +27,15 @@ export default function Defects() {
 
     return (
         <>
-            {error ? (
-                <Alert severity='error' sx={{ marginTop: 1, border: '1px solid red', paddingY: '10px' }}>
-                    {error.name}: {error.message}
-                </Alert>
-            ) : (
-                <>
-                    <Filters setRows={setRows} setError={setError} />
-                    <DefectTable rows={rows} setTabOpen={setTabOpen} setSelectedDefect={setSelectedDefect} />
-                    <DefectTab
-                        open={tabOpen}
-                        handleClose={() => setTabOpen(false)}
-                        setError={setError}
-                        defect={selectedDefect}
-                        setSelectedDefect={setSelectedDefect}
-                        setRows={setRows}
-                    />
-                </>
-            )}
+            <Filters setRows={setRows} />
+            <DefectTable rows={rows} setTabOpen={setTabOpen} setSelectedDefect={setSelectedDefect} />
+            <DefectTab
+                open={tabOpen}
+                handleClose={() => setTabOpen(false)}
+                defect={selectedDefect}
+                setSelectedDefect={setSelectedDefect}
+                setRows={setRows}
+            />
         </>
     );
 }
