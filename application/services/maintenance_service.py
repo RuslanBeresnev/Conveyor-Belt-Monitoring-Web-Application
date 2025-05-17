@@ -3,6 +3,7 @@ import requests
 
 from fastapi import APIRouter, HTTPException
 from sqlmodel import SQLModel, Session, select, text
+from sqlalchemy.exc import OperationalError, DatabaseError
 
 from application.models.db_models import (ObjectType, Object, DefectType, Photo, Defect, Relation, ConveyorParameters,
                                           LogType, Version)
@@ -18,6 +19,26 @@ def get_service_info():
     return ServiceInfoResponseModel(
         info="Service providing functionality to support a database and application"
     )
+
+
+@router.get(path="/check_application", response_model=MaintenanceActionResponseModel)
+def check_application_availability():
+    return MaintenanceActionResponseModel(maintenance_info="OK")
+
+
+@router.get(path="/check_database", response_model=MaintenanceActionResponseModel)
+def check_database_availability():
+    try:
+        with Session(engine) as session:
+            session.connection().execute(text("SELECT 0"))
+        return MaintenanceActionResponseModel(maintenance_info="OK")
+    except UnicodeDecodeError as e:
+        raise HTTPException(status_code=503, detail="Connection to the database could not be established "
+                                                    "because connection string in configuration is invalid")
+    except OperationalError as e:
+        raise HTTPException(status_code=503, detail="Some problems with database connection")
+    except DatabaseError as e:
+        raise HTTPException(status_code=503, detail="Some problems in database")
 
 
 @router.post(path="/create_tables", response_model=MaintenanceActionResponseModel)
