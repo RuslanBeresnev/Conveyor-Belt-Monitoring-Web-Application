@@ -158,6 +158,14 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
                 attached_file_bytes.name = attached_file.filename
                 await telegram_bot.send_document(chat_id=user_chat_id, document=attached_file_bytes,
                                                  caption=notification.message)
+        except telegram.error.InvalidToken as exception:
+            # Action logging
+            await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
+                                                                       "via Telegram. Error info: "
+                                                                       f"\"{NotificationSendingErrorMessage.INVALID_BOT_TOKEN.value}\""})
+            raise HTTPException(status_code=500,
+                                detail=NotificationSendingErrorMessage.INVALID_BOT_TOKEN.value) from exception
         except telegram.error.TelegramError as exception:
             # Action logging
             await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
