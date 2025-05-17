@@ -18,11 +18,11 @@ export default function ErrorDialog() {
                 <Alert severity='error' sx={{ border: '1px solid red' }}>
                     {error ?
                         <>
-                            {`${error.name}: \"${error.message}\"`}
+                            {`${error.name}: "${error.message}"`}
                             {error.response ?
                                 <>
                                     <br />
-                                    {`Details: \"${error.response.data.detail}\"`}
+                                    {`Details: "${error.response.data.detail}"`}
                                 </>
                             : ''}
                         </>

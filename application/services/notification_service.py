@@ -43,6 +43,8 @@ class NotificationSendingErrorMessage(Enum):
     TELEGRAM_ERROR = "Some error in Telegram API"
     INVALID_GMAIL_CLIENT_SECRET_FILE = "File 'client_secret.json' is incorrect"
     GMAIL_CLIENT_SECRET_FILE_ABSENCE = "File 'client_secret.json' does not exist"
+    INCORRECT_CREDENTIALS = "Credentials not found or incorrect"
+    INVALID_MESSAGE_FORMAT = "Invalid message format"
 
 
 def write_telegram_user_name_and_chat_id_to_env_file(user_name, user_chat_id):
@@ -230,13 +232,13 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
 
         try:
             gmail_service = build(serviceName="gmail", version="v1", credentials=credentials)
-        except DefaultCredentialsError as exception:
+        except DefaultCredentialsError as e:
             # Action logging
             await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
-                                                                       "via Gmail. Error info: "
-                                                                       f"\"{error_message.value}\""})
-            raise HTTPException(status_code=403, detail="Credentials not found or incorrect") from exception
+                              params={"log_type": "error",
+                                      "log_text": "Error has occurred while sending notification via Gmail. Error info:"
+                                                  f" {NotificationSendingErrorMessage.INCORRECT_CREDENTIALS}"})
+            raise HTTPException(status_code=403, detail=NotificationSendingErrorMessage.INCORRECT_CREDENTIALS) from e
 
         try:
             # pylint: disable=E1101
@@ -250,9 +252,10 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
         except TypeError as e:
             # Action logging
             await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                              params={"log_type": "error", "log_text": "Error has occurred while sending notification "
-                                                                       "via Gmail: invalid message format"})
-            raise HTTPException(status_code=500, detail="Invalid message format") from e
+                              params={"log_type": "error",
+                                      "log_text": "Error has occurred while sending notification via Gmail. Error info:"
+                                                  f" {NotificationSendingErrorMessage.INVALID_MESSAGE_FORMAT}"})
+            raise HTTPException(status_code=500, detail=NotificationSendingErrorMessage.INVALID_MESSAGE_FORMAT) from e
 
         # Action logging
         await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
