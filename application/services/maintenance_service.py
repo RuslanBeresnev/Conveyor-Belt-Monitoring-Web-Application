@@ -21,8 +21,8 @@ def get_service_info():
     )
 
 
-@router.get(path="/check_application", response_model=MaintenanceActionResponseModel)
-def check_application_availability():
+@router.get(path="/check_server", response_model=MaintenanceActionResponseModel)
+def check_server_availability():
     return MaintenanceActionResponseModel(maintenance_info="OK")
 
 

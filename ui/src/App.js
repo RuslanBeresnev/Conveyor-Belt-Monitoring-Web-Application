@@ -6,6 +6,7 @@ import Topbar from "./components/Topbar/Topbar";
 import Sidebar from "./components/Sidebar/Sidebar";
 import {ErrorProvider} from "./context/ErrorContext";
 import ErrorDialog from "./components/Dialogs/ErrorDialog";
+import HealthChecker from "./components/HealthChecker/HealthChecker";
 
 export default function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,6 +34,7 @@ export default function App() {
                         <Route path={route.path} key={route.path} element={route.element} exact={route.exact} />
                     )}
                 </Routes>
+                <HealthChecker />
                 <ErrorDialog />
             </ErrorProvider>
         </div>
