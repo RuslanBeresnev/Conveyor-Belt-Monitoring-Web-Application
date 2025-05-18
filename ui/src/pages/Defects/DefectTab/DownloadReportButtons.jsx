@@ -12,12 +12,11 @@ export default function DownloadReportButtons({defect_id}) {
 
     const downloadReport = async (report_type) => {
         setDisableButtons(true);
-        setTimeout(() => setDisableButtons(false), 3000);
         try {
             await ReportService.downloadReportOfDefect(defect_id, report_type);
         } catch (error) {
             showError(error, "Report about defect downloading error");
-        }
+        } finally {setDisableButtons(false)}
     }
 
     return (

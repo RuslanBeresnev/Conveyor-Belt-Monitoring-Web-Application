@@ -12,7 +12,6 @@ export default function DownloadReportButtons({currentSection}) {
 
     const downloadReport = async (report_type) => {
         setDisableButtons(true);
-        setTimeout(() => setDisableButtons(false), 3000);
         try {
             if (currentSection === "Defects") {
                 await ReportService.downloadReportOfAllDefects(report_type);
@@ -21,7 +20,7 @@ export default function DownloadReportButtons({currentSection}) {
             }
         } catch (error) {
             showError(error, "Report downloading error");
-        }
+        } finally {setDisableButtons(false)}
     }
 
     return (

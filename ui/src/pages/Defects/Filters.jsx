@@ -23,19 +23,10 @@ export default function Filters({setRows}) {
             .catch(error => showError(error, "All types of defect for \"Type\" filter select fetching error"));
     }, [])
 
-    const onFilterChange = async (event) => {
-        try {
-            const response = await DefectInfoService.getFilteredDefects(
-                type, criticality, fromDate, toDate
-            );
-            setRows(response.data);
-        } catch (error) {
-            showError(error, "Filtered defects fetching error");
-        }
-    }
-
     useEffect(() => {
-        onFilterChange();
+        DefectInfoService.getFilteredDefects(type, criticality, fromDate, toDate)
+            .then(response => setRows(response.data))
+            .catch(error => showError(error, "Filtered defects fetching error"));
     }, [type, criticality, fromDate, toDate]);
 
     return (

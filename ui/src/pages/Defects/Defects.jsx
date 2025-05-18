@@ -1,9 +1,9 @@
 import {useEffect, useState} from "react";
+import {useError} from "../../context/ErrorContext";
 import DefectInfoService from "../../API/DefectInfoService";
 import DefectTable from "./DefectTable";
 import Filters from "./Filters";
 import DefectTab from "./DefectTab/DefectTab";
-import {useError} from "../../context/ErrorContext";
 
 export default function Defects() {
     const [rows, setRows] = useState([]);
@@ -12,17 +12,10 @@ export default function Defects() {
     const [tabOpen, setTabOpen] = useState(false);
     const [selectedDefect, setSelectedDefect] = useState(null);
 
-    const loadRows = async () => {
-        try {
-            const response = await DefectInfoService.getAllDefects();
-            setRows(response.data);
-        } catch (error) {
-            showError(error, "Table of defects fetching error");
-        }
-    };
-
     useEffect(() => {
-        loadRows();
+        DefectInfoService.getAllDefects()
+            .then(response => setRows(response.data))
+            .catch(error => showError(error, "Table of defects fetching error"));
     }, []);
 
     return (

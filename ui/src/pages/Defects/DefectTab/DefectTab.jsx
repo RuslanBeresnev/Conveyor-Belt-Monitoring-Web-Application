@@ -16,18 +16,11 @@ export default function DefectTab({ open, handleClose, defect, setSelectedDefect
     const [chainOfPrevious, setChainOfPrevious] = useState([]);
     const {showError} = useError();
 
-    const getChainOfPreviousDefects = async (id) => {
-        try {
-            const response = await DefectInfoService.getChainOfPreviousDefectVariationsByDefectId(id);
-            setChainOfPrevious(response.data);
-        } catch (error) {
-            showError(error, "Chain of previous defects fetching error");
-        }
-    };
-
     useEffect(() => {
         if (!defect) return;
-        getChainOfPreviousDefects(defect.id);
+        DefectInfoService.getChainOfPreviousDefectVariationsByDefectId(defect.id)
+            .then(response => setChainOfPrevious(response.data))
+            .catch(error => showError(error, "Chain of previous defects fetching error"))
     }, [defect]);
 
     if (!defect) return null;

@@ -42,15 +42,12 @@ export default function DefectOptions({defect, setSelectedDefect, setRows, handl
         }
     }
 
-    const deleteDefect = async () => {
-        try {
-            setDeletionDialogOpen(false);
-            await DefectInfoService.deleteDefect(defect.id);
+    const deleteDefect = () => {
+        setDeletionDialogOpen(false);
+        DefectInfoService.deleteDefect(defect.id).then(() => {
             setRows(prevRows => prevRows.filter(row => row.id !== defect.id));
             handleClose();
-        } catch (error) {
-            showError(error, "Defect deletion error");
-        }
+        }).catch(error => showError(error, "Defect deletion error"))
     }
 
     return (

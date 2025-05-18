@@ -5,18 +5,11 @@ import MaintenanceService from "../../API/MaintenanceService";
 export default function HealthChecker() {
     const {showError} = useError();
 
-    const checkServerAndDatabaseHealth = async() => {
-        try {
-            await MaintenanceService.checkServer();
-        } catch (error) {
-            showError(error, "SERVER UNAVAILABLE");
-            return;
-        }
-        try {
-            await MaintenanceService.checkDatabase();
-        } catch (error) {
-            showError(error, "DATABASE UNAVAILABLE");
-        }
+    const checkServerAndDatabaseHealth = () => {
+        MaintenanceService.checkServer()
+            .then(() => MaintenanceService.checkDatabase()
+                .catch(error => showError(error, "DATABASE UNAVAILABLE")))
+            .catch(error => {showError(error, "SERVER UNAVAILABLE"); return null;});
     }
 
     useEffect(() => {
