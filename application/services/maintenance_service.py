@@ -53,28 +53,24 @@ def create_or_recreate_all_database_tables(test_mode: bool = False):
     SQLModel.metadata.create_all(engine)
 
     # Creating trigger and trigger function for the table "defects" (apart the case when running in the test mode)
-    raw_sql = """
-              CREATE
-              OR REPLACE FUNCTION notify_on_new_defect()
+    raw_sql = \
+    """
+    CREATE OR REPLACE FUNCTION notify_on_new_defect()
     RETURNS TRIGGER AS $$
     DECLARE
-              payload TEXT;
-              BEGIN
-        payload
-              := row_to_json(NEW)::TEXT;
-        PERFORM
-              pg_notify('new_defect', payload);
-              RETURN NEW;
-              END;
-    $$
-              LANGUAGE plpgsql;
-
-              CREATE TRIGGER trigger_on_new_defect
-                  AFTER INSERT
-                  ON defects
-                  FOR EACH ROW
-                  EXECUTE FUNCTION notify_on_new_defect(); \
-              """
+        payload TEXT;
+    BEGIN
+        payload := row_to_json(NEW)::TEXT;
+        PERFORM pg_notify('new_defect', payload);
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    
+    CREATE TRIGGER trigger_on_new_defect
+    AFTER INSERT ON defects
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_on_new_defect();
+    """
     if not test_mode:
         with Session(engine) as session:
             session.connection().execute(text(raw_sql))
