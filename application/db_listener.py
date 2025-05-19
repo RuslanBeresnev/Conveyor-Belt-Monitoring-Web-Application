@@ -15,13 +15,15 @@ from .db_connection import engine
 from application.models.db_models import Defect
 from application.services.defect_info_service import form_response_model_from_defect, determine_defect_criticality
 
+from application.services.maintenance_service import notify_clients
+
 settings = Settings()
 
 
 async def send_error_notification(subject: str, message: str):
     """
-    Send notification in Telegram and by Gmail in the case when a new defect has appeared but defect info
-    has turned out to be corrupted
+    Send notification in Telegram and by Gmail and to the client in the case when a new defect has appeared
+    but defect info has turned out to be corrupted
     """
     async with AsyncClient() as client:
         # Action logging
@@ -35,13 +37,16 @@ async def send_error_notification(subject: str, message: str):
                                                params={"subject": subject, "text": message})
             telegram_response.raise_for_status()
             gmail_response.raise_for_status()
+            await notify_clients(json.dumps({"title": subject, "text": message}))
         except HTTPStatusError as e:
-            details = e.response.json().get("detail")
-            # Sending the notification when a new defect appears is a very important feature, so it is better
-            # to terminate the application with an exception than to have the operator simply doesn't see
-            # the notification.
-            raise Exception("There were some errors when trying to send a notification via Telegram or Gmail.\n"
-                            f"Error info: {details}\n\nFailure notification info: {message}") from e
+            try:
+                details = json.loads(e.response.text).get("detail")
+            except json.JSONDecodeError:
+                details = e.response.text
+            await notify_clients(
+                json.dumps({"title": subject,
+                            "text": "There were some errors when trying to send a notification via Telegram " \
+                                    f"or Gmail.\n Error info: {details}.\n\nFailure notification info:\n{message}"}))
 
 
 async def on_new_defect_notify_handler(connection, pid, channel, payload):
@@ -51,6 +56,7 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
         await send_error_notification(
             subject="New defect on the conveyor! [Corrupted Info]".upper(),
             message=f"New defect has appeared, but it seems the defect has corrupted info. Exception info: {e}")
+        return
 
     with Session(engine) as session:
         new_defect = session.exec(select(Defect).where(Defect.id == json_payload["id"])).one()
@@ -64,10 +70,11 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
     try:
         defect_photo = BytesIO(base64.b64decode(formatted_defect.base64_photo))
     except (binascii.Error, TypeError):
-        await send_error_notification(subject="New defect on the conveyor! [Corrupted Photo]".upper(),
+        await send_error_notification(subject=f"{message_header} [Corrupted Photo]".upper(),
                                       message="New defect has appeared, but it seems like there is incorrect "
                                               "base64-encoded representation of the photo for the new defect!.\n"
                                               f"Defect info:\n\n{defect_to_text}")
+        return
 
     async with AsyncClient() as client:
         # Action logging
@@ -89,13 +96,16 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
                                                files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
             telegram_response.raise_for_status()
             gmail_response.raise_for_status()
+            await notify_clients(json.dumps({"title": message_header, "text": defect_to_text}))
         except HTTPStatusError as e:
-            details = e.response.json().get("detail")
-            # Sending the notification when a new defect appears is a very important feature, so it is better
-            # to terminate the application with an exception than to have the operator simply doesn't see
-            # the notification.
-            raise Exception("There were some errors when trying to send a notification via Telegram or Gmail.\n"
-                            f"Error info: {details}\n\nNotification info:\n{message_header}\n{defect_to_text}") from e
+            try:
+                details = json.loads(e.response.text).get("detail")
+            except json.JSONDecodeError:
+                details = e.response.text
+            await notify_clients(
+                json.dumps({"title": message_header,
+                            "text": "There were some errors when trying to send a notification via Telegram " \
+                                    f"or Gmail.\n Error info: {details}.\n\nNotification info:\n{defect_to_text}"}))
 
 
 async def listen_for_new_defects():

@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {useError} from "../../context/ErrorContext";
 import DefectInfoService from "../../API/DefectInfoService";
-import DefectTable from "./DefectTable";
+import DefectsTable from "./DefectsTable";
 import Filters from "./Filters";
 import DefectTab from "./DefectTab/DefectTab";
 
@@ -21,7 +21,7 @@ export default function Defects() {
     return (
         <>
             <Filters setRows={setRows} />
-            <DefectTable rows={rows} setTabOpen={setTabOpen} setSelectedDefect={setSelectedDefect} />
+            <DefectsTable rows={rows} setTabOpen={setTabOpen} setSelectedDefect={setSelectedDefect} />
             <DefectTab
                 open={tabOpen}
                 handleClose={() => setTabOpen(false)}

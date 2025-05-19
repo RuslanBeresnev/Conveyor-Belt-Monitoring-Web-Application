@@ -8,7 +8,7 @@ import TableCell from "@mui/material/TableCell";
 import TableBody from "@mui/material/TableBody";
 import DefectInfoUtils from '../../utils/DefectInfoUtils';
 
-export default function DefectTable({ rows, setTabOpen, setSelectedDefect }) {
+export default function DefectsTable({ rows, setTabOpen, setSelectedDefect }) {
     const openDefectTab = (defect) => {
         setSelectedDefect(defect);
         setTabOpen(true);

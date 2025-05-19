@@ -1,7 +1,9 @@
 from datetime import datetime
 import requests
+import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlmodel import SQLModel, Session, select, text
 from sqlalchemy.exc import OperationalError, DatabaseError
 
@@ -13,12 +15,35 @@ from application.models.api_models import ServiceInfoResponseModel, MaintenanceA
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"])
 
+connectedClients = set()
+
+
+async def event_generator():
+    queue = asyncio.Queue()
+    connectedClients.add(queue)
+    try:
+        while True:
+            data = await queue.get()
+            yield f"data: {data}\n\n"
+    finally:
+        connectedClients.remove(queue)
+
+
+async def notify_clients(message: str):
+    for queue in list(connectedClients):
+        await queue.put(message)
+
 
 @router.get(path="/", response_model=ServiceInfoResponseModel)
 def get_service_info():
     return ServiceInfoResponseModel(
         info="Service providing functionality to support a database and application"
     )
+
+
+@router.get(path="/get_events")
+async def subscribe_to_server_events(request: Request):
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get(path="/check_server", response_model=MaintenanceActionResponseModel)

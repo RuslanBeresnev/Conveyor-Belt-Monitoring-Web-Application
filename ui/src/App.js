@@ -1,14 +1,17 @@
 import {useEffect, useState} from "react";
 import {useLocation} from "react-router";
 import {Routes, Route} from "react-router-dom";
+import {useSSE} from "./hooks/useSSE";
 import {appSections} from "./router";
 import Topbar from "./components/Topbar/Topbar";
 import Sidebar from "./components/Sidebar/Sidebar";
-import {ErrorProvider} from "./context/ErrorContext";
-import ErrorDialog from "./components/Dialogs/ErrorDialog";
 import HealthChecker from "./components/HealthChecker/HealthChecker";
+import ErrorDialog from "./components/Dialogs/ErrorDialog";
+import NotificationDialog from "./components/Dialogs/NotificationDialog";
 
 export default function App() {
+    useSSE();
+
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [currentSection, setCurrentSection] = useState('');
 
@@ -26,17 +29,16 @@ export default function App() {
 
     return (
         <div className="App">
-            <ErrorProvider>
-                <Topbar onMenuClick={() => setSidebarOpen(true)} currentSection={currentSection} />
-                <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-                <Routes>
-                    {appSections.map(route =>
-                        <Route path={route.path} key={route.path} element={route.element} exact={route.exact} />
-                    )}
-                </Routes>
-                <HealthChecker />
-                <ErrorDialog />
-            </ErrorProvider>
+            <Topbar onMenuClick={() => setSidebarOpen(true)} currentSection={currentSection} />
+            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+            <Routes>
+                {appSections.map(route =>
+                    <Route path={route.path} key={route.path} element={route.element} exact={route.exact} />
+                )}
+            </Routes>
+            <HealthChecker />
+            <ErrorDialog />
+            <NotificationDialog />
         </div>
     );
 }
