@@ -23,11 +23,7 @@ export default function ParamsAndStatusCard({params, setParams, handleOpenParams
             .catch(error => showError(error, "Conveyor parameters fetching error"));
 
         ConveyorInfoService.getConveyorStatus()
-            .then(response => {
-                if (response.data.is_normal) setStatus("normal")
-                else if (response.data.is_extreme) setStatus("extreme")
-                else if (response.data.is_critical) setStatus("critical")
-            })
+            .then(response => setStatus(response.data.status))
             .catch(error => showError(error, "Conveyor status fetching error"));
     }, []);
 

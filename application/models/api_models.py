@@ -73,9 +73,7 @@ class ConveyorParametersResponseModel(BaseModel):
 
 
 class ConveyorStatusResponseModel(BaseModel):
-    is_normal: bool
-    is_extreme: bool
-    is_critical: bool
+    status: str
 
 
 class LogResponseModel(BaseModel):

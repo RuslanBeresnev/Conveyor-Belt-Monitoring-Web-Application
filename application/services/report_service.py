@@ -243,37 +243,45 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     title = Paragraph(f"REPORT ABOUT CONVEYOR INFO ({datetime.now().strftime("%d.%m.%Y - %H:%M")})", title_style)
 
     parameters = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/parameters").json()
-    status = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/status").json()
-    status_text = None
+    status_response = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/status").json()
     status_text_color = None
-    if status["is_normal"]:
-        status_text = "normal"
+    if status_response["status"] == "normal":
         status_text_color = colors.green
-    elif status["is_extreme"]:
-        status_text = "extreme"
+    elif status_response["status"] == "extreme":
         status_text_color = colors.orange
-    elif status["is_critical"]:
-        status_text = "critical"
+    elif status_response["status"] == "critical":
         status_text_color = colors.red
+
+    defects_count = requests.get("http://127.0.0.1:8000/api/v1/defect_info/count").json()
 
     info_list_style = ParagraphStyle(
         name="InfoListStyle",
         parent=getSampleStyleSheet()["Normal"],
         fontSize=16,
-        leading=20
+        leading=20,
     )
+
     parameters_and_status = ListFlowable(
         [
             Paragraph(f"Belt length: <b>{parameters["belt_length"] / 1000000} km</b>", info_list_style),
             Paragraph(f"Belt width: <b>{parameters["belt_width"] / 1000} m</b>", info_list_style),
             Paragraph(f"Belt thickness: <b>{parameters["belt_thickness"]} mm</b>", info_list_style),
             Paragraph(f"General status: <b><font color=\"{convert_color_to_hex(status_text_color)}\">"
-                      f"{status_text.upper()}</font></b>", info_list_style),
+                      f"{status_response["status"].upper()}</font></b>", info_list_style),
         ],
         bulletType="bullet"
     )
 
-    elements = [title, parameters_and_status]
+    defects_count_info = ListFlowable(
+        [
+            Paragraph(f"Total count of defects: <b>{defects_count["total"]}</b>", info_list_style),
+            Paragraph(f"Count of extreme-level defects: <b>{defects_count["extreme"]}</b>", info_list_style),
+            Paragraph(f"Count of critical-level defects: <b>{defects_count["critical"]}</b>", info_list_style)
+        ],
+        bulletType="bullet"
+    )
+
+    elements = [title, parameters_and_status, Spacer(1, 32), defects_count_info]
     report_doc.build(elements)
 
     # Action logging
@@ -290,7 +298,7 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     response = ConveyorInfoReportResponseModel(
         doc_type="pdf",
         timestamp=datetime.now(),
-        status=status_text
+        status=status_response["status"]
     )
     return response
 
@@ -369,17 +377,14 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
 @router.post(path="/conveyor/csv", response_model=ConveyorInfoReportResponseModel)
 def upload_report_of_conveyor_parameters_and_status_in_csv_format():
     parameters = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/parameters").json()
-    status = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/status").json()
-    status_text = None
-    if status["is_normal"]:
-        status_text = "normal"
-    elif status["is_extreme"]:
-        status_text = "extreme"
-    elif status["is_critical"]:
-        status_text = "critical"
+    status_response = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/status").json()
+    defects_count = requests.get("http://127.0.0.1:8000/api/v1/defect_info/count").json()
 
-    csv_headers = "belt_length,belt_width,belt_thickness,general_status\n"
-    csv_conveyor_info = ",".join([str(value) for (key, value) in parameters.items()]) + f",{status_text}\n"
+    csv_headers = ("belt_length,belt_width,belt_thickness,general_status,total_count_of_defects,count_of_extreme,"
+                   "count_of_critical\n")
+    csv_conveyor_info = (",".join([str(value) for (key, value) in parameters.items()]) +
+                         f",{status_response["status"]}," +
+                         ",".join([str(value) for (key, value) in defects_count.items()]) + "\n")
 
     filename = "report_of_conveyor_info.csv"
     with open("report_of_conveyor_info.csv", "w", encoding="utf-8") as output_file:
@@ -400,6 +405,6 @@ def upload_report_of_conveyor_parameters_and_status_in_csv_format():
     response = ConveyorInfoReportResponseModel(
         doc_type="csv",
         timestamp=datetime.now(),
-        status=status_text
+        status=status_response["status"]
     )
     return response
