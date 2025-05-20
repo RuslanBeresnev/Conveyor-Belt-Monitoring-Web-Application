@@ -18,17 +18,6 @@ router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"])
 connectedClients = set()
 
 
-async def event_generator():
-    queue = asyncio.Queue()
-    connectedClients.add(queue)
-    try:
-        while True:
-            data = await queue.get()
-            yield f"data: {data}\n\n"
-    finally:
-        connectedClients.remove(queue)
-
-
 async def notify_clients(message: str):
     for queue in list(connectedClients):
         await queue.put(message)
@@ -42,7 +31,22 @@ def get_service_info():
 
 
 @router.get(path="/get_events")
-async def subscribe_to_server_events(request: Request):
+async def subscribe_client_to_server_events(request: Request):
+    async def event_generator():
+        queue = asyncio.Queue()
+        connectedClients.add(queue)
+        while True:
+            # On connection closing by client side
+            if await request.is_disconnected():
+                break
+            try:
+                data = await asyncio.wait_for(queue.get(), timeout=1)
+                yield f"data: {data}\n\n"
+            except asyncio.TimeoutError:
+                # To be able to check the request.is_disconnected() condition
+                continue
+        connectedClients.discard(queue)
+
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
