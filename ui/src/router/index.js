@@ -1,5 +1,5 @@
 import Defects from "../pages/Defects/Defects";
-import Conveyor from "../pages/Conveyor";
+import Conveyor from "../pages/Conveyor/Conveyor";
 import Logs from "../pages/Logs";
 import Settings from "../pages/Settings";
 

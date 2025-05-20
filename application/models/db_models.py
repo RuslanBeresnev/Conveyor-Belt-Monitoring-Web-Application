@@ -108,8 +108,8 @@ class ConveyorParameters(SQLModel, table=True):
     __tablename__ = "conv"
     id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
     belt_length: int = Field(default=17360000, nullable=False)
-    belt_width: int = Field(default=336000, nullable=False)
-    belt_thickness: int = Field(default=630, nullable=False)
+    belt_width: int = Field(default=3360, nullable=False)
+    belt_thickness: int = Field(default=15, nullable=False)
 
 
 class ConveyorStatus(SQLModel, table=True):
