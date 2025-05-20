@@ -309,8 +309,10 @@ def upload_report_of_all_defects_in_csv_format():
     extreme_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/extreme").json()
     critical_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/critical").json()
 
-    csv_table_headers = ",".join([str(key) for key, value in all_defects[0].items()]) + "\n"
-    csv_table_lines = [",".join([str(value) for key, value in defect.items()]) + "\n" for defect in all_defects]
+    # Parameter "base64_photo" excluded from header and lines because base64-representation of defect's photo is large
+    csv_table_headers = ",".join([str(key) for key, value in all_defects[0].items() if key != "base64_photo"]) + "\n"
+    csv_table_lines = [",".join([str(value) for key, value in defect.items() if key != "base64_photo"]) +
+                       "\n" for defect in all_defects]
 
     filename = "report_of_all_defects.csv"
     with open(filename, "w", encoding="utf-8") as output_file:
@@ -347,8 +349,9 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
         raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
     defect = response.json()
 
-    csv_headers = ",".join([str(key) for key, value in defect.items()]) + "\n"
-    csv_defect_info = ",".join([str(value) for key, value in defect.items()]) + "\n"
+    # Parameter "base64_photo" excluded from header and lines because base64-representation of defect's photo is large
+    csv_headers = ",".join([str(key) for key, value in defect.items() if key != "base64_photo"]) + "\n"
+    csv_defect_info = ",".join([str(value) for key, value in defect.items() if key != "base64_photo"]) + "\n"
 
     filename = f"report_of_defect_id_{defect_id}.csv"
     with open(filename, "w", encoding="utf-8") as output_file:
