@@ -1,67 +1,31 @@
 import axios from 'axios';
 import dayjs from "dayjs";
 
-export default class DefectInfoService {
-    static getCountOfDefectCriticalityGroups = async () => {
-        try {
-            return await axios.get('http://127.0.0.1:8000/api/v1/defect_info/count');
-        } catch (error) {
-            throw error;
-        }
-    }
+const api = axios.create({
+    baseURL: 'http://127.0.0.1:8000/api/v1/defect_info',
+});
 
-    static getAllDefects = async () => {
-        try {
-            return await axios.get('http://127.0.0.1:8000/api/v1/defect_info/all');
-        } catch (error) {
-            throw error;
-        }
-    }
+export default class DefectInfoService {
+    static getCountOfDefectCriticalityGroups = async () => await api.get('/count')
+
+    static getAllDefects = async () => await api.get('/all')
 
     static getFilteredDefects = async (defect_type='all', criticality='all', start_datetime, end_datetime) => {
-        try {
-            if (!start_datetime) {
-                start_datetime = dayjs(0);
-            }
-            if (!end_datetime) {
-                end_datetime = dayjs();
-            }
-            return await axios.get(`http://127.0.0.1:8000/api/v1/defect_info/filtered?defect_type=${defect_type}&criticality=${criticality}&start_datetime=${start_datetime.toISOString()}&end_datetime=${end_datetime.toISOString()}`);
-        } catch (error) {
-            throw error;
+        if (!start_datetime) {
+            start_datetime = dayjs(0);
         }
+        if (!end_datetime) {
+            end_datetime = dayjs();
+        }
+        return await api.get(`/filtered?defect_type=${defect_type}&criticality=${criticality}&start_datetime=${start_datetime.toISOString()}&end_datetime=${end_datetime.toISOString()}`);
     }
 
-    static getAllTypesOfDefects = async () => {
-        try {
-            return await axios.get('http://127.0.0.1:8000/api/v1/defect_info/all_types');
-        } catch (error) {
-            throw error;
-        }
-    }
+    static getAllTypesOfDefects = async () => await api.get('/all_types')
 
-    static getChainOfPreviousDefectVariationsByDefectId = async (id) => {
-        try {
-            return await axios.get(`http://127.0.0.1:8000/api/v1/defect_info/id=${id}/chain_of_previous`);
-        } catch (error) {
-            throw error;
-        }
-    }
+    static getChainOfPreviousDefectVariationsByDefectId = async (id) => await api.get(`/id=${id}/chain_of_previous`)
 
-    static setNewCriticalityOfDefect = async (id, is_extreme, is_critical) => {
-        try {
-            return await axios.put(`http://127.0.0.1:8000/api/v1/defect_info/id=${id}/set_criticality`, null,
-                {params: {is_extreme: is_extreme, is_critical: is_critical} });
-        } catch (error) {
-            throw error;
-        }
-    }
+    static setNewCriticalityOfDefect = async (id, is_extreme, is_critical) =>
+        await api.put(`/id=${id}/set_criticality`, null, {params: {is_extreme: is_extreme, is_critical: is_critical}})
 
-    static deleteDefect = async (id) => {
-        try {
-            return await axios.delete(`http://127.0.0.1:8000/api/v1/defect_info/id=${id}/delete`);
-        } catch (error) {
-            throw error;
-        }
-    }
+    static deleteDefect = async (id) => await api.delete(`/id=${id}/delete`)
 }
