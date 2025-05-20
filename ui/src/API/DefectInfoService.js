@@ -2,6 +2,14 @@ import axios from 'axios';
 import dayjs from "dayjs";
 
 export default class DefectInfoService {
+    static getCountOfDefectCriticalityGroups = async () => {
+        try {
+            return await axios.get('http://127.0.0.1:8000/api/v1/defect_info/count');
+        } catch (error) {
+            throw error;
+        }
+    }
+
     static getAllDefects = async () => {
         try {
             return await axios.get('http://127.0.0.1:8000/api/v1/defect_info/all');
