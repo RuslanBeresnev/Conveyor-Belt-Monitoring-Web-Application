@@ -10,8 +10,7 @@ from sqlalchemy.exc import OperationalError, DatabaseError
 from application.models.db_models import (ObjectType, Object, DefectType, Photo, Defect, Relation, ConveyorParameters,
                                           LogType, Version)
 from application.db_connection import engine
-from application.models.api_models import ServiceInfoResponseModel, MaintenanceActionResponseModel, \
-    NewConveyorParameters
+from application.models.api_models import ServiceInfoResponseModel, MaintenanceActionResponseModel
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"])
 
@@ -306,24 +305,4 @@ def remove_relation_between_two_defects_without_chain_checking(previous_defect_i
 
     return MaintenanceActionResponseModel(
         maintenance_info=f"Relation between defects with id={previous_defect_id} and id={current_defect_id} was removed"
-    )
-
-
-@router.post(path="/change_conveyor_parameters", response_model=MaintenanceActionResponseModel)
-def change_base_parameters_of_conveyor(new_parameters: NewConveyorParameters):
-    with Session(engine) as session:
-        current_params = session.exec(select(ConveyorParameters).where(ConveyorParameters.id == 1)).one()
-        current_params.belt_length = new_parameters.new_belt_length
-        current_params.belt_width = new_parameters.new_belt_width
-        current_params.belt_thickness = new_parameters.new_belt_thickness
-
-        session.add(current_params)
-        session.commit()
-
-    # Action logging
-    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "info", "log_text":
-        "Base parameters of the conveyor were updated"})
-
-    return MaintenanceActionResponseModel(
-        maintenance_info="Base parameters of the conveyor were updated"
     )

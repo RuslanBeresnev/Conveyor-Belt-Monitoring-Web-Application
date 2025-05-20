@@ -6,7 +6,8 @@ from sqlmodel import Session, select, desc
 
 from application.db_connection import engine
 from application.models.db_models import ObjectType, Object, ConveyorParameters, ConveyorStatus
-from application.models.api_models import ServiceInfoResponseModel, ConveyorParametersResponseModel, ConveyorStatusResponseModel
+from application.models.api_models import (ServiceInfoResponseModel, ConveyorParametersResponseModel,
+                                           ConveyorStatusResponseModel, NewConveyorParameters)
 
 router = APIRouter(prefix="/conveyor_info", tags=["Conveyor General Information Service"])
 
@@ -95,3 +96,25 @@ def create_record_of_current_general_conveyor_status():
 
         response = form_response_model_from_conveyor_status(current_conv_status)
         return response
+
+
+@router.post(path="/change_parameters", response_model=ConveyorParametersResponseModel)
+def change_base_conveyor_parameters(new_parameters: NewConveyorParameters):
+    with Session(engine) as session:
+        current_params = session.exec(select(ConveyorParameters).where(ConveyorParameters.id == 1)).one()
+        current_params.belt_length = new_parameters.new_belt_length
+        current_params.belt_width = new_parameters.new_belt_width
+        current_params.belt_thickness = new_parameters.new_belt_thickness
+
+        session.add(current_params)
+        session.commit()
+
+        # Action logging
+        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "info", "log_text":
+            "Base parameters of the conveyor were updated"})
+
+        return ConveyorParametersResponseModel(
+            belt_length=current_params.belt_length,
+            belt_width=current_params.belt_width,
+            belt_thickness=current_params.belt_thickness
+        )

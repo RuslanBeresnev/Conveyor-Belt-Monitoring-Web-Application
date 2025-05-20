@@ -1,13 +1,15 @@
 import {useEffect, useState} from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-import ConveyorInfoService from "../../API/ConveyorInfoService";
+import Button from "@mui/material/Button";
 import {useError} from "../../context/ErrorContext";
+import ConveyorInfoService from "../../API/ConveyorInfoService";
 
-export default function ParamsAndStatusCard() {
-    const [params, setParams] = useState({ length: 0, width: 0, thickness: 0 });
+export default function ParamsAndStatusCard({params, setParams, handleOpenParamsChangingDialog}) {
+
     const [status, setStatus] = useState("normal");
     const {showError} = useError();
 
@@ -44,9 +46,13 @@ export default function ParamsAndStatusCard() {
                 <Typography>Belt Length: {params.length} km</Typography>
                 <Typography>Belt Width: {params.width} m</Typography>
                 <Typography>Belt Thickness: {params.thickness} mm</Typography>
-                <Typography sx={{ mt: 2 }}>
-                    Conveyor Status: <Chip label={status} color={statusColor[status]} variant="outlined" />
-                </Typography>
+                <Box sx={{ mt: 2 }}>
+                    <Typography component="span">Conveyor Status: </Typography>
+                    <Chip label={status} color={statusColor[status]} variant="outlined" />
+                </Box>
+                <Button variant="outlined" sx={{ mt: 3 }} onClick={handleOpenParamsChangingDialog}>
+                    Change Parameters
+                </Button>
             </CardContent>
         </Card>
     );
