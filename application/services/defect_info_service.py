@@ -7,7 +7,8 @@ from sqlmodel import Session, select, and_, not_
 
 from application.db_connection import engine
 from application.models.db_models import Object, DefectType, Defect, Relation
-from application.models.api_models import ServiceInfoResponseModel, DefectResponseModel, TypesOfDefectsResponseModel
+from application.models.api_models import (ServiceInfoResponseModel, CountOfDefectGroupsResponseModel,
+                                           DefectResponseModel, TypesOfDefectsResponseModel)
 
 router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
 
@@ -55,6 +56,26 @@ def form_response_model_from_defect(defect: Defect):
 def get_service_info():
     return ServiceInfoResponseModel(
         info="Service providing information about emerging defects, their types and other useful parameters"
+    )
+
+
+@router.get(path="/count", response_model=CountOfDefectGroupsResponseModel)
+def get_count_of_all_and_extreme_and_critical_defects():
+    count_of_extreme = 0
+    count_of_critical = 0
+
+    with Session(engine) as session:
+        defects = session.exec(select(Defect)).all()
+        for defect in defects:
+            if defect.is_critical:
+                count_of_critical += 1
+            elif defect.is_extreme:
+                count_of_extreme += 1
+
+    return CountOfDefectGroupsResponseModel(
+        total=len(defects),
+        extreme=count_of_extreme,
+        critical=count_of_critical
     )
 
 

@@ -35,6 +35,12 @@ class GmailNotificationResponseModel(BaseModel):
     attached_file: str | None
 
 
+class CountOfDefectGroupsResponseModel(BaseModel):
+    total: int
+    extreme: int
+    critical: int
+
+
 class DefectResponseModel(BaseModel):
     id: int
     timestamp: datetime  # from Object model
