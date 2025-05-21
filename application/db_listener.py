@@ -11,6 +11,7 @@ from asyncpg import connect
 from sqlmodel import Session, select
 
 from .config import Settings
+from .config import UserPreferences
 from .db_connection import engine
 from application.models.db_models import Defect
 from application.services.defect_info_service import form_response_model_from_defect, determine_defect_criticality
@@ -18,6 +19,7 @@ from application.services.defect_info_service import form_response_model_from_de
 from application.services.maintenance_service import notify_clients
 
 settings = Settings()
+user_preferences = UserPreferences()
 
 
 async def send_error_notification(subject: str, message: str):
@@ -31,12 +33,18 @@ async def send_error_notification(subject: str, message: str):
             f"New undefined defect has appeared on the conveyor, but defect info has corrupted!"})
 
         try:
-            telegram_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
-                                                  params={"message": f"{subject}\n\n{message}"})
-            gmail_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
-                                               params={"subject": subject, "text": message})
-            telegram_response.raise_for_status()
-            gmail_response.raise_for_status()
+            telegram_response = None
+            gmail_response = None
+
+            if UserPreferences.SEND_TELEGRAM_NOTIFICATION_ON_NEW_DEFECT:
+                telegram_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
+                                                      params={"message": f"{subject}\n\n{message}"})
+            if UserPreferences.SEND_GMAIL_NOTIFICATION_ON_NEW_DEFECT:
+                gmail_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
+                                                   params={"subject": subject, "text": message})
+
+            if telegram_response: telegram_response.raise_for_status()
+            if gmail_response: gmail_response.raise_for_status()
             await notify_clients(json.dumps({"title": subject, "text": message}))
         except HTTPStatusError as e:
             try:
@@ -86,16 +94,23 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
         await client.post("http://127.0.0.1:8000/api/v1/conveyor_info/create_record")
 
         try:
+            telegram_response = None
+            gmail_response = None
+
             # Notification sending
-            telegram_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
-                                                  params={"message": message_header + "\n\n" + defect_to_text},
-                                                  files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
-            gmail_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
-                                               params={"subject": message_header,
-                                                       "text": f"Defect info:\n\n{defect_to_text}"},
-                                               files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
-            telegram_response.raise_for_status()
-            gmail_response.raise_for_status()
+            if UserPreferences.SEND_TELEGRAM_NOTIFICATION_ON_NEW_DEFECT:
+                telegram_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
+                                                      params={"message": message_header + "\n\n" + defect_to_text},
+                                                      files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
+            if UserPreferences.SEND_GMAIL_NOTIFICATION_ON_NEW_DEFECT:
+                gmail_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
+                                                   params={"subject": message_header,
+                                                           "text": f"Defect info:\n\n{defect_to_text}"},
+                                                   files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
+
+            if telegram_response: telegram_response.raise_for_status()
+            if gmail_response: gmail_response.raise_for_status()
+
             await notify_clients(json.dumps({"title": message_header, "text": defect_to_text}))
         except HTTPStatusError as e:
             try:

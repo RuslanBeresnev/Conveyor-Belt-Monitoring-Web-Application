@@ -15,3 +15,19 @@ class Settings(BaseSettings):
         env_file=".env",
         extra="forbid"
     )
+
+
+class UserPreferences(BaseSettings):
+    """
+    Settings for user preferences that are stored in the .user_preferences file and used by the client-side
+    """
+    SEND_TELEGRAM_NOTIFICATION_ON_NEW_DEFECT: bool
+    SEND_GMAIL_NOTIFICATION_ON_NEW_DEFECT: bool
+    SEND_REPORTS_BY_TELEGRAM: bool
+    SEND_REPORTS_BY_GMAIL: bool
+
+    model_config = SettingsConfigDict(
+        env_file=".user_preferences",
+        extra="forbid"
+    )
+

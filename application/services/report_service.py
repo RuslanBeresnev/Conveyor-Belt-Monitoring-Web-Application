@@ -16,8 +16,10 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from application.models.api_models import (ServiceInfoResponseModel, DefectResponseModel, AllDefectsReportResponseModel,
                                            OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
+from application.config import UserPreferences
 
 router = APIRouter(prefix="/report", tags=["Reports Generation Service"])
+user_preferences = UserPreferences()
 
 
 def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo_size: (int, int)):
@@ -90,15 +92,21 @@ def convert_color_to_hex(color: Color):
 
 def send_report_as_notification(filename: str, caption: str):
     try:
+        telegram_response = None
+        gmail_response = None
+
         # Sending generated report via Telegram
-        telegram_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
-                                          params={"message": caption}, files=[("attached_file", open(filename, "rb"))])
+        if user_preferences.SEND_REPORTS_BY_TELEGRAM:
+            telegram_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
+                                              params={"message": caption}, files=[("attached_file", open(filename, "rb"))])
         # Sending generated report via Gmail
-        gmail_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
-                                       params={"subject": caption, "text": ""},
-                                       files=[("attached_file", open(filename, "rb"))])
-        telegram_response.raise_for_status()
-        gmail_response.raise_for_status()
+        if user_preferences.SEND_REPORTS_BY_GMAIL:
+            gmail_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
+                                           params={"subject": caption, "text": ""},
+                                           files=[("attached_file", open(filename, "rb"))])
+
+        if telegram_response: telegram_response.raise_for_status()
+        if gmail_response: gmail_response.raise_for_status()
     except requests.HTTPError as e:
         error_status_code = e.response.status_code
         try:
