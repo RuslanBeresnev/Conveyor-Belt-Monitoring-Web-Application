@@ -179,7 +179,7 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
 
         # Action logging
         await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                          params={"log_type": "action_info", "log_text": "Notification with the text "
+                          params={"log_type": "message", "log_text": "Notification with the text "
                                                                          f"\"{notification.message}\" was successfully "
                                                                          f"sent via Telegram to the user {username}"})
 
@@ -259,7 +259,7 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
 
         # Action logging
         await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                          params={"log_type": "action_info", "log_text": "Notification with the subject "
+                          params={"log_type": "message", "log_text": "Notification with the subject "
                                                                          f"\"{message["subject"]}\" was successfully "
                                                                          "sent via Gmail to the address "
                                                                          f"{message["to"]}"})

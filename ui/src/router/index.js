@@ -1,6 +1,6 @@
 import Defects from "../pages/Defects/Defects";
 import Conveyor from "../pages/Conveyor/Conveyor";
-import Logs from "../pages/Logs";
+import Logs from "../pages/Logs/Logs";
 import Settings from "../pages/Settings";
 
 export const appSections = [

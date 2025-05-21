@@ -31,6 +31,13 @@ def get_service_info():
     )
 
 
+@router.get(path="/all", response_model=list[LogResponseModel])
+def get_all_log_records_in_reverse_order():
+    with Session(engine) as session:
+        logs = session.exec(select(Log).order_by(desc(Log.id))).all()
+        return [form_response_model_from_log(log) for log in logs]
+
+
 @router.get(path="/id={log_id}", response_model=LogResponseModel)
 def get_log_record_by_id(log_id: int):
     with Session(engine) as session:
@@ -39,17 +46,6 @@ def get_log_record_by_id(log_id: int):
             raise HTTPException(status_code=404, detail=f"There is no log record with id={log_id}")
         response = form_response_model_from_log(log)
         return response
-
-
-@router.get(path="/latest", response_model=list[LogResponseModel])
-def get_latest_log_records_within_count_limit(limit: int = None):
-    with Session(engine) as session:
-        if not limit:
-            logs = session.exec(select(Log).order_by(Log.id)).all()
-        else:
-            logs = session.exec(select(Log).order_by(desc(Log.id)).limit(limit)).all()
-            logs = sorted(logs, key=lambda log: log.id)
-        return [form_response_model_from_log(log) for log in logs]
 
 
 @router.get(path="/type={log_type}", response_model=list[LogResponseModel])
@@ -81,7 +77,7 @@ def create_log_record_by_type_and_text(log_type: str, log_text: str):
 
 
 @router.delete(path="/id={log_id}/delete", response_model=LogResponseModel)
-def delete_log_record_by_id(log_id: int):
+def delete_log_record_by_id(log_id: int, log_deletion_event: bool = True):
     with Session(engine) as session:
         log = session.exec(select(Log).where(Log.id == log_id)).first()
         if not log:
@@ -96,15 +92,16 @@ def delete_log_record_by_id(log_id: int):
         session.commit()
 
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                      params={"log_type": "action_info", "log_text": f"Log record with id={log_id} has removed "
-                                                                     "successfully"})
+        if log_deletion_event:
+            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "action_info", "log_text": f"Log record with id={log_id} has removed "
+                                                                         "successfully"})
 
         return response
 
 
 @router.delete(path="/delete_all", response_model=AllLogsRemovingResponseModel)
-def delete_all_log_records():
+def delete_all_log_records(log_deletion_event: bool = True):
     with Session(engine) as session:
         all_logs = session.exec(select(Log)).all()
         count_to_remove = len(all_logs)
@@ -122,8 +119,9 @@ def delete_all_log_records():
         session.commit()
 
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                      params={"log_type": "action_info", "log_text": "All log records has removed successfully"})
+        if log_deletion_event:
+            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                          params={"log_type": "action_info", "log_text": "All log records has removed successfully"})
 
         return AllLogsRemovingResponseModel(
             status="All log records was deleted",
