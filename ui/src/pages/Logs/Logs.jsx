@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {useError} from "../../context/ErrorContext";
+import LogsTableOptions from "./LogsTableOptions";
 import LogsTable from './LogsTable';
 import LoggingService from '../../API/LoggingService';
 
@@ -19,12 +20,8 @@ export default function Logs() {
 
     return (
         <>
-            <LogsTable
-                rows={rows}
-                setRows={setRows}
-                filteredLatestRows={filteredLatestRows}
-                setFilteredLatestRows={setFilteredLatestRows}
-            />
+            <LogsTableOptions rows={rows} setRows={setRows} setFilteredLatestRows={setFilteredLatestRows} />
+            <LogsTable setRows={setRows} filteredLatestRows={filteredLatestRows} />
         </>
     );
 }

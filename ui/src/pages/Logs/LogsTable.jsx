@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
@@ -34,21 +33,19 @@ const logTypeIcons = {
     state_of_devices: <ConveyorBeltIcon sx={{ color: '#535353' }} />
 };
 
-export default function LogsTable({ rows, setRows, filteredLatestRows, setFilteredLatestRows}) {
+export default function LogsTable({ setRows, filteredLatestRows }) {
     const [logIdToDelete, setLogIdToDelete] = useState(0);
     const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
     const {showError} = useError();
 
-    const deleteLog = async (logDeletionEvent) => {
-        const rowsWithoutDeleted = rows.filter((row) => row.id !== logIdToDelete);
-        setRows(rowsWithoutDeleted);
-        setFilteredLatestRows(rowsWithoutDeleted);
+    const deleteLog = async (needToLog) => {
+        setRows(previousRows => previousRows.filter((row) => row.id !== logIdToDelete));
         setDeletionDialogOpen(false);
-        LoggingService.deleteLogById(logIdToDelete, logDeletionEvent).catch(error => showError(error, "Log record deletion error"));
+        LoggingService.deleteLogById(logIdToDelete, needToLog).catch(error => showError(error, "Log record deletion error"));
     };
 
     return (
-        <Box>
+        <>
             <TableContainer component={Paper} sx={{ marginTop: 1 }}>
                 <Table>
                     <TableHead>
@@ -96,6 +93,6 @@ export default function LogsTable({ rows, setRows, filteredLatestRows, setFilter
                 title="Delete log"
                 text="Are you sure you want to delete this log record?"
             />
-        </Box>
+        </>
     );
 }
