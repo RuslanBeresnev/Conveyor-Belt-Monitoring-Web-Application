@@ -8,7 +8,7 @@ export default class ConveyorInfoService {
     static getConveyorStatus = async () => await api.get('/status')
 
     static changeConveyorParameters = async (new_belt_length, new_belt_width, new_belt_thickness) =>
-        await api.post('/change_parameters', {
+        await api.put('/change_parameters', {
             "new_belt_length": new_belt_length,
             "new_belt_width": new_belt_width,
             "new_belt_thickness": new_belt_thickness

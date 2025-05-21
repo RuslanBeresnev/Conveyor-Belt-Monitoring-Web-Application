@@ -276,7 +276,7 @@ def create_relation_between_two_defects_without_chain_checking(previous_defect_i
     )
 
 
-@router.post(path="/remove_relation", response_model=MaintenanceActionResponseModel)
+@router.delete(path="/remove_relation", response_model=MaintenanceActionResponseModel)
 def remove_relation_between_two_defects_without_chain_checking(previous_defect_id: int, current_defect_id: int):
     with (Session(engine) as session):
         if previous_defect_id == current_defect_id:

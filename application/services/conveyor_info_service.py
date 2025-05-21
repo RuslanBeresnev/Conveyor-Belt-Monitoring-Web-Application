@@ -99,7 +99,7 @@ def create_record_of_current_general_conveyor_status():
         )
 
 
-@router.post(path="/change_parameters", response_model=ConveyorParametersResponseModel)
+@router.put(path="/change_parameters", response_model=ConveyorParametersResponseModel)
 def change_base_conveyor_parameters(new_parameters: NewConveyorParameters):
     with Session(engine) as session:
         current_params = session.exec(select(ConveyorParameters).where(ConveyorParameters.id == 1)).one()
