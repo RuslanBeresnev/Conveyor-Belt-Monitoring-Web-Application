@@ -1,8 +1,6 @@
-import axios from 'axios';
+import {createServiceApi} from "./BaseAPI";
 
-const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api/v1/maintenance',
-});
+const api = createServiceApi('maintenance')
 
 export default class MaintenanceService {
     static checkServer = async () => await api.get('/check_server')

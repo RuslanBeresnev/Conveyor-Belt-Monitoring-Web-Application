@@ -1,9 +1,7 @@
-import axios from 'axios';
 import dayjs from "dayjs";
+import {createServiceApi} from "./BaseAPI";
 
-const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api/v1/defect_info',
-});
+const api = createServiceApi('defect_info')
 
 export default class DefectInfoService {
     static getCountOfDefectCriticalityGroups = async () => await api.get('/count')

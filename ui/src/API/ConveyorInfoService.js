@@ -1,8 +1,6 @@
-import axios from 'axios';
+import {createServiceApi} from "./BaseAPI";
 
-const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api/v1/conveyor_info',
-});
+const api = createServiceApi('conveyor_info')
 
 export default class ConveyorInfoService {
     static getConveyorParameters = async () => await api.get('/parameters')
