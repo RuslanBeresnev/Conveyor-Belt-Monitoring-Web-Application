@@ -10,7 +10,9 @@ from sqlalchemy.exc import OperationalError, DatabaseError
 from application.models.db_models import (ObjectType, Object, DefectType, Photo, Defect, Relation, ConveyorParameters,
                                           LogType, Version)
 from application.db_connection import engine
-from application.models.api_models import ServiceInfoResponseModel, MaintenanceActionResponseModel
+from application.models.api_models import (ServiceInfoResponseModel, MaintenanceActionResponseModel,
+                                           UserNotificationSettings)
+from application.user_settings import save_user_settings, load_user_settings
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"])
 
@@ -306,3 +308,14 @@ def remove_relation_between_two_defects_without_chain_checking(previous_defect_i
     return MaintenanceActionResponseModel(
         maintenance_info=f"Relation between defects with id={previous_defect_id} and id={current_defect_id} was removed"
     )
+
+
+@router.get(path="/get_user_notification_settings", response_model=UserNotificationSettings)
+def get_user_notification_settings():
+    return load_user_settings()
+
+
+@router.post(path="/update_user_notification_settings", response_model=UserNotificationSettings)
+def update_user_notification_settings(updated_settings: UserNotificationSettings):
+    save_user_settings(updated_settings.model_dump())
+    return updated_settings

@@ -106,3 +106,8 @@ class ConveyorInfoReportResponseModel(BaseModel):
     doc_type: str  # pdf / csv
     timestamp: datetime
     status: str  # normal / extreme / critical
+
+
+class UserNotificationSettings(BaseModel):
+    new_defect_notification_scope: list[str]
+    report_sending_scope: list[str]
