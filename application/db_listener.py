@@ -11,7 +11,7 @@ from asyncpg import connect
 from sqlmodel import Session, select
 
 from .config import Settings
-from .config import UserPreferences
+from .user_settings import load_user_settings
 from .db_connection import engine
 from application.models.db_models import Defect
 from application.services.defect_info_service import form_response_model_from_defect, determine_defect_criticality
@@ -19,7 +19,6 @@ from application.services.defect_info_service import form_response_model_from_de
 from application.services.maintenance_service import notify_clients
 
 settings = Settings()
-user_preferences = UserPreferences()
 
 
 async def send_error_notification(subject: str, message: str):
@@ -36,10 +35,10 @@ async def send_error_notification(subject: str, message: str):
             telegram_response = None
             gmail_response = None
 
-            if UserPreferences.SEND_TELEGRAM_NOTIFICATION_ON_NEW_DEFECT:
+            if not load_user_settings() or "Telegram" in load_user_settings()["new_defect_notification_scope"]:
                 telegram_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
                                                       params={"message": f"{subject}\n\n{message}"})
-            if UserPreferences.SEND_GMAIL_NOTIFICATION_ON_NEW_DEFECT:
+            if not load_user_settings() or "Gmail" in load_user_settings()["new_defect_notification_scope"]:
                 gmail_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
                                                    params={"subject": subject, "text": message})
 
@@ -98,11 +97,11 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
             gmail_response = None
 
             # Notification sending
-            if UserPreferences.SEND_TELEGRAM_NOTIFICATION_ON_NEW_DEFECT:
+            if not load_user_settings() or "Telegram" in load_user_settings()["new_defect_notification_scope"]:
                 telegram_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
                                                       params={"message": message_header + "\n\n" + defect_to_text},
                                                       files={"attached_file": ("Defect.jpg", defect_photo, "image/jpeg")})
-            if UserPreferences.SEND_GMAIL_NOTIFICATION_ON_NEW_DEFECT:
+            if not load_user_settings() or "Gmail" in load_user_settings()["new_defect_notification_scope"]:
                 gmail_response = await client.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
                                                    params={"subject": message_header,
                                                            "text": f"Defect info:\n\n{defect_to_text}"},

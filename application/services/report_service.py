@@ -14,12 +14,11 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+from application.user_settings import load_user_settings
 from application.models.api_models import (ServiceInfoResponseModel, DefectResponseModel, AllDefectsReportResponseModel,
                                            OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
-from application.config import UserPreferences
 
 router = APIRouter(prefix="/report", tags=["Reports Generation Service"])
-user_preferences = UserPreferences()
 
 
 def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo_size: (int, int)):
@@ -96,11 +95,11 @@ def send_report_as_notification(filename: str, caption: str):
         gmail_response = None
 
         # Sending generated report via Telegram
-        if user_preferences.SEND_REPORTS_BY_TELEGRAM:
+        if not load_user_settings() or "Telegram" in load_user_settings()["report_sending_scope"]:
             telegram_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
                                               params={"message": caption}, files=[("attached_file", open(filename, "rb"))])
         # Sending generated report via Gmail
-        if user_preferences.SEND_REPORTS_BY_GMAIL:
+        if not load_user_settings() or "Gmail" in load_user_settings()["report_sending_scope"]:
             gmail_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
                                            params={"subject": caption, "text": ""},
                                            files=[("attached_file", open(filename, "rb"))])
