@@ -15,4 +15,10 @@ export default class MaintenanceService {
             "new_defect_notification_scope": on_new_defect_notification_scope,
             "report_sending_scope": report_sending_scope
         })
+
+    static recreateDatabase = async () => await api.post('/create_tables')
+
+    static fillDatabaseWithRequiredData = async () => await api.post('/fill_database')
+
+    static addTestDefectToDatabase = async () => await api.post('/add_test_defect')
 }

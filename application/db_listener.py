@@ -49,7 +49,10 @@ async def send_error_notification(subject: str, message: str):
             try:
                 details = json.loads(e.response.text).get("detail")
             except json.JSONDecodeError:
-                details = e.response.text
+                if not e.response.text or e.response.text == "":
+                    details = f"Some error with status-code = {e.response.status_code}"
+                else:
+                    details = e.response.text
             await notify_clients(
                 json.dumps({"title": subject,
                             "text": "There were some errors when trying to send a notification via Telegram " \
@@ -115,7 +118,10 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
             try:
                 details = json.loads(e.response.text).get("detail")
             except json.JSONDecodeError:
-                details = e.response.text
+                if not e.response.text or e.response.text == "":
+                    details = f"Some error with status-code = {e.response.status_code}"
+                else:
+                    details = e.response.text
             await notify_clients(
                 json.dumps({"title": message_header,
                             "text": "There were some errors when trying to send a notification via Telegram " \

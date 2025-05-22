@@ -61,7 +61,7 @@ export default function NotificationSettings() {
         } catch (error) {
             showError(error, 'Telegram notification sending error')
         } finally {setDisableButtons(false)}
-    }
+    };
 
     const sendGmailNotification = async (subject, text) => {
         setDisableButtons(true)
@@ -70,7 +70,7 @@ export default function NotificationSettings() {
         } catch (error) {
             showError(error, 'Gmail notification sending error')
         } finally {setDisableButtons(false)}
-    }
+    };
 
     return (
         <Card>
