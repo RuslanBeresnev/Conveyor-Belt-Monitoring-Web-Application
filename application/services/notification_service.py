@@ -153,7 +153,7 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
                                 detail=error_message.value)
 
         try:
-            if attached_file == "":
+            if attached_file == "" or not attached_file:
                 await telegram_bot.send_message(chat_id=user_chat_id, text=notification.message)
             else:
                 attached_file_bytes = BytesIO(await attached_file.read())
@@ -187,7 +187,7 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
             notification_method="telegram_notification",
             to_user=username,
             sent_message=notification.message,
-            attached_file=attached_file.filename if attached_file != "" else None
+            attached_file=attached_file.filename if attached_file != "" and attached_file else None
         )
 
 
@@ -195,7 +195,7 @@ async def send_telegram_notification(notification: TelegramNotification = Depend
 async def send_gmail_notification(notification: GmailNotification = Depends(),
                                   attached_file: UploadFile | str = File(None)):
     async with httpx.AsyncClient() as client:
-        if attached_file == "":
+        if attached_file == "" or not attached_file:
             message = MIMEText(notification.text)
         else:
             message = MIMEMultipart()
@@ -203,7 +203,7 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
         message["to"] = settings.GMAIL_ADDRESS
         message["subject"] = notification.subject
 
-        if attached_file != "":
+        if attached_file != "" and attached_file:
             text = MIMEText(notification.text)
             message.attach(text)
 
@@ -269,5 +269,5 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
             to=message["to"],
             subject=message["subject"],
             sent_text=notification.text,
-            attached_file=attached_file.filename if attached_file != "" else None
+            attached_file=attached_file.filename if attached_file != "" and attached_file else None
         )

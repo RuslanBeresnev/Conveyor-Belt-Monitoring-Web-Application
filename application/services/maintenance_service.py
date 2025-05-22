@@ -1,8 +1,11 @@
 from datetime import datetime
+from json import JSONDecodeError
+
 import requests
 import asyncio
 
 from fastapi import APIRouter, Request, HTTPException
+from pydantic import ValidationError
 from fastapi.responses import StreamingResponse
 from sqlmodel import SQLModel, Session, select, text
 from sqlalchemy.exc import OperationalError, DatabaseError
@@ -312,10 +315,23 @@ def remove_relation_between_two_defects_without_chain_checking(previous_defect_i
 
 @router.get(path="/get_user_notification_settings", response_model=UserNotificationSettings)
 def get_user_notification_settings():
-    return load_user_settings()
+    try:
+        user_settings = load_user_settings()
+    except JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail="Invalid JSON-data in .user_settings file") from e
+
+    if not user_settings:
+        raise HTTPException(status_code=500, detail="There is no .user_settings file on the server")
+
+    try:
+        UserNotificationSettings(**user_settings)
+    except ValidationError as e:
+        raise HTTPException(status_code=500, detail="Incorrect notification settings in .user_settings file") from e
+
+    return user_settings
 
 
-@router.post(path="/update_user_notification_settings", response_model=UserNotificationSettings)
+@router.put(path="/update_user_notification_settings", response_model=UserNotificationSettings)
 def update_user_notification_settings(updated_settings: UserNotificationSettings):
     save_user_settings(updated_settings.model_dump())
     return updated_settings

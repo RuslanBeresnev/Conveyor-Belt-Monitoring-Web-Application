@@ -1,7 +1,7 @@
 import Defects from "../pages/Defects/Defects";
 import Conveyor from "../pages/Conveyor/Conveyor";
 import Logs from "../pages/Logs/Logs";
-import Settings from "../pages/Settings";
+import Settings from "../pages/Settings/Settings";
 
 export const appSections = [
     {path: '/defects', element: <Defects />, exact: true},

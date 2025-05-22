@@ -1,4 +1,10 @@
 {
-  "new_defect_notification_scope": ["Telegram", "Gmail"],
-  "report_sending_scope": ["Telegram", "Gmail"]
+  "new_defect_notification_scope": [
+    "Telegram",
+    "Gmail"
+  ],
+  "report_sending_scope": [
+    "Telegram",
+    "Gmail"
+  ]
 }
