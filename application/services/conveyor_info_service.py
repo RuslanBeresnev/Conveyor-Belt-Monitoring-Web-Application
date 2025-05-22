@@ -111,8 +111,8 @@ def change_base_conveyor_parameters(new_parameters: NewConveyorParameters):
         session.commit()
 
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "info", "log_text":
-            "Base parameters of the conveyor were updated"})
+        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
+                      params={"log_type": "action_info","log_text": "Base parameters of the conveyor were updated"})
 
         return ConveyorParametersResponseModel(
             belt_length=current_params.belt_length,
