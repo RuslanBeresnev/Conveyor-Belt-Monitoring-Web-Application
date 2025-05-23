@@ -19,7 +19,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 3567
+      POSTGRES_PASSWORD: 1010
       POSTGRES_DB: TestDB
     volumes:
       - postgres_data:/var/lib/postgresql/data
