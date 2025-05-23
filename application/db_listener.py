@@ -4,6 +4,7 @@ from io import BytesIO
 import json
 import binascii
 
+import httpx
 from fastapi import FastAPI
 from asyncio import create_task, sleep
 from httpx import AsyncClient, HTTPStatusError
@@ -26,7 +27,7 @@ async def send_error_notification(subject: str, message: str):
     Send notification in Telegram and by Gmail and to the client in the case when a new defect has appeared
     but defect info has turned out to be corrupted
     """
-    async with AsyncClient() as client:
+    async with AsyncClient(timeout=10) as client:
         # Action logging
         await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "error", "log_text":
             f"New undefined defect has appeared on the conveyor, but defect info has corrupted!"})
@@ -44,6 +45,7 @@ async def send_error_notification(subject: str, message: str):
 
             if telegram_response: telegram_response.raise_for_status()
             if gmail_response: gmail_response.raise_for_status()
+
             await notify_clients(json.dumps({"title": subject, "text": message}))
         except HTTPStatusError as e:
             try:
@@ -57,6 +59,11 @@ async def send_error_notification(subject: str, message: str):
                 json.dumps({"title": subject,
                             "text": "There were some errors when trying to send a notification via Telegram " \
                                     f"or Gmail.\n Error info: {details}.\n\nFailure notification info:\n{message}"}))
+        except httpx.ReadTimeout as e:
+            await notify_clients(
+                json.dumps({"title": subject,
+                            "text": "ReadTimeout error has occurred when trying to send a notification via Telegram " \
+                                    f"or Gmail.\n\nFailure notification info:\n{message}"}))
 
 
 async def on_new_defect_notify_handler(connection, pid, channel, payload):
@@ -86,7 +93,7 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
                                               f"Defect info:\n\n{defect_to_text}")
         return
 
-    async with AsyncClient() as client:
+    async with AsyncClient(timeout=10) as client:
         # Action logging
         log_type = "warning" if criticality == "normal" else f"{criticality}_defect"
         await client.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": log_type, "log_text":
@@ -126,6 +133,11 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
                 json.dumps({"title": message_header,
                             "text": "There were some errors when trying to send a notification via Telegram " \
                                     f"or Gmail.\n Error info: {details}.\n\nNotification info:\n{defect_to_text}"}))
+        except httpx.ReadTimeout as e:
+            await notify_clients(
+                json.dumps({"title": message_header,
+                            "text": "ReadTimeout error has occurred when trying to send a notification via Telegram " \
+                                    f"or Gmail.\n\nNotification info:\n{defect_to_text}"}))
 
 
 async def listen_for_new_defects():
