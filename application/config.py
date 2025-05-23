@@ -3,8 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """
-    Settings for secret parameters that are stored in the .env file
+    Settings for the secret parameters and connection configuration that are stored in the .env file
     """
+    CLIENT_ADDRESS: str
+    CLIENT_PORT: str
     TELEGRAM_BOT_TOKEN: str
     DATABASE_URL: str
     GMAIL_ADDRESS: str

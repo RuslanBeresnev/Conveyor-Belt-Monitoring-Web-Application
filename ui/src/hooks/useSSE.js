@@ -7,7 +7,8 @@ export const useSSE = () => {
     const { showNotification } = useNotification();
 
     useEffect(() => {
-        const eventSource = new EventSource("http://localhost:8000/api/v1/maintenance/get_events");
+        const url = `http://${process.env.REACT_APP_SERVER_ADDRESS}:${process.env.REACT_APP_CONNECTION_PORT}/api/v1/maintenance/get_events`
+        const eventSource = new EventSource(url);
 
         eventSource.onmessage = (event) => {
             try {
