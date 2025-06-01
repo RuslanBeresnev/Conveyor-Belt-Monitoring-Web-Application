@@ -33,7 +33,14 @@ export default function Infographics() {
                 const x = Math.floor(defect.longitudinal_position / realCellWidth);
                 const y = Math.floor(defect.transverse_position / realCellHeight);
                 if (updatedBeltCells[y] && updatedBeltCells[y][x] !== undefined) {
-                    updatedBeltCells[y][x] = defect;
+                    const cellValue = updatedBeltCells[y][x];
+                    if (cellValue === null) {
+                        updatedBeltCells[y][x] = defect;
+                    } else if (Array.isArray(cellValue)) {
+                        updatedBeltCells[y][x] = [...cellValue, defect];
+                    } else {
+                        updatedBeltCells[y][x] = [cellValue, defect];
+                    }
                 }
             });
             setBeltCells(updatedBeltCells);
@@ -66,7 +73,7 @@ export default function Infographics() {
                     {beltCells.map((row, rowIndex) => (
                         <TableRow key={rowIndex}>
                             {row.map((cell, colIndex) =>
-                                <CustomCell cell={cell} colIndex={colIndex} />
+                                <CustomCell key={colIndex} cell={cell} />
                             )}
                         </TableRow>
                     ))}

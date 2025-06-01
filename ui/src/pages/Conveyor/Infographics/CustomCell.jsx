@@ -1,26 +1,34 @@
 import TableCell from "@mui/material/TableCell";
-import CustomTooltip from "./CustomTooltip";
+import OneDefectTooltip from "./OneDefectTooltip";
+import ManyDefectsTooltip from "./ManyDefectsTooltip";
 import Box from "@mui/material/Box";
 import NewReleasesIcon from "@mui/icons-material/NewReleases";
+import AutoAwesomeMotionIcon from '@mui/icons-material/AutoAwesomeMotion';
 
-export default function CustomCell({cell, colIndex}) {
+export default function CustomCell({cell}) {
     return (
-        <TableCell key={colIndex}>
+        <TableCell>
             {cell !== null && (
-                <CustomTooltip cell={cell}>
                     <Box display="flex" alignItems="center" justifyContent="center" height="100%">
-                        <NewReleasesIcon
-                            color={
-                                cell.criticality === 'critical'
-                                    ? 'error'
-                                    : cell.criticality === 'extreme'
-                                        ? 'warning'
-                                        : 'disabled'
-                            }
-                        />
+                        {Array.isArray(cell)
+                            ?
+                            <ManyDefectsTooltip cellContent={cell} >
+                                <AutoAwesomeMotionIcon color='secondary' />
+                            </ManyDefectsTooltip>
+                            :
+                            <OneDefectTooltip cell={cell} >
+                                <NewReleasesIcon
+                                    color={
+                                        cell.criticality === 'critical'
+                                            ? 'error'
+                                            : cell.criticality === 'extreme'
+                                                ? 'warning'
+                                                : 'disabled'
+                                    }
+                                />
+                            </OneDefectTooltip>
+                        }
                     </Box>
-                </CustomTooltip>
-
             )}
         </TableCell>
     )

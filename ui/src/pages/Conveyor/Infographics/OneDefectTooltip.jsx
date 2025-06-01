@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Zoom from "@mui/material/Zoom";
 
-export default function CustomTooltip({children, cell}) {
+export default function OneDefectTooltip({children, cell}) {
     return (
         <Tooltip
             title={
