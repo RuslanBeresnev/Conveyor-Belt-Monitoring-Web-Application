@@ -29,6 +29,9 @@ export default function Conveyor() {
                 <Grid item size={2.5}>
                     <DefectCountCard />
                 </Grid>
+                <Grid item size={12}>
+                    <Infographics />
+                </Grid>
             </Grid>
             <ParamsChangingDialog
                 setParams={setParams}
@@ -37,7 +40,6 @@ export default function Conveyor() {
                 open={paramsChangeDialogOpen}
                 setOpen={setParamsChangeDialogOpen}
             />
-            <Infographics />
         </Box>
     );
 }
