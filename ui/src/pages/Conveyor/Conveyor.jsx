@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import ParamsAndStatusCard from "./ParamsAndStatusCard";
 import DefectCountCard from "./DefectCountCard";
 import ParamsChangingDialog from "./ParamsChangingDialog";
+import Infographics from "./Infographics/Infographics";
 
 export default function Conveyor() {
     const [params, setParams] = useState({ length: 0, width: 0, thickness: 0 });
@@ -36,6 +37,7 @@ export default function Conveyor() {
                 open={paramsChangeDialogOpen}
                 setOpen={setParamsChangeDialogOpen}
             />
+            <Infographics />
         </Box>
     );
 }
