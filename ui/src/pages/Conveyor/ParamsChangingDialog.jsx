@@ -13,6 +13,7 @@ export default function ParamsChangingDialog({setParams, editedParams, setEdited
     const handleSaveNewParams = async () => {
         setOpen(false);
         try {
+            // Converting parameters from kilometers and meters to millimeters
             await ConveyorInfoService.changeConveyorParameters(
                 Math.trunc(editedParams.length * 1000000),
                 Math.trunc(editedParams.width * 1000),

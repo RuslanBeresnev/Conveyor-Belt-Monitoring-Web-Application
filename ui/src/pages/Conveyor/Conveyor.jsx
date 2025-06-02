@@ -7,6 +7,7 @@ import ParamsChangingDialog from "./ParamsChangingDialog";
 import Infographics from "./Infographics/Infographics";
 
 export default function Conveyor() {
+    // params.length as kilometers, params.width as meters
     const [params, setParams] = useState({ length: 0, width: 0, thickness: 0 });
     const [editedParams, setEditedParams] = useState({ ...params });
     const [paramsChangeDialogOpen, setParamsChangeDialogOpen] = useState(false);
@@ -30,7 +31,7 @@ export default function Conveyor() {
                     <DefectCountCard />
                 </Grid>
                 <Grid item size={12}>
-                    <Infographics />
+                    <Infographics conveyorParams={params} />
                 </Grid>
             </Grid>
             <ParamsChangingDialog

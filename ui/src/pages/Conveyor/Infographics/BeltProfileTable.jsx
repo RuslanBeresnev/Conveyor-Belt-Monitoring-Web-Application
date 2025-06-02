@@ -3,12 +3,9 @@ import Paper from "@mui/material/Paper";
 import {Table, TableBody, TableCell, TableRow} from "@mui/material";
 import CustomCell from "./CustomCell";
 
-export default function BeltProfileTable({beltCells, areaWidth, areaHeight, cols}) {
-    const xLabelsEveryNCells = 3
-    const yLabelsEveryNCells = 2
-
+export default function BeltProfileTable({beltCells, areaWidth, areaHeight, cols, xLabelsEveryNCells, yLabelsEveryNCells}) {
     return (
-        <TableContainer component={Paper} elevation={0} sx={{ marginTop: 4 }}>
+        <TableContainer component={Paper} elevation={0} sx={{ marginTop: 2 }}>
             <Table
                 sx={{
                     borderCollapse: 'collapse',
@@ -49,7 +46,7 @@ export default function BeltProfileTable({beltCells, areaWidth, areaHeight, cols
                                 >
                                     {
                                         originalRowIndex % yLabelsEveryNCells === 0
-                                        ? (originalRowIndex * areaHeight / 1000).toFixed(2)
+                                        ? (originalRowIndex * areaHeight).toFixed(2)
                                         : ""
                                     }
                                 </TableCell>
@@ -93,7 +90,7 @@ export default function BeltProfileTable({beltCells, areaWidth, areaHeight, cols
                             >
                                 {
                                     colIndex % xLabelsEveryNCells === 0
-                                    ? (colIndex * areaWidth / 1000000).toFixed(2)
+                                    ? (colIndex * areaWidth).toFixed(2)
                                     : ""
                                 }
                             </TableCell>

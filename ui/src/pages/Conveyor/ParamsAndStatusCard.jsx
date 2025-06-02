@@ -14,6 +14,7 @@ export default function ParamsAndStatusCard({params, setParams, handleOpenParams
     const {showError} = useError();
 
     useEffect(() => {
+        // Converting parameters to kilometers and meters from millimeters
         ConveyorInfoService.getConveyorParameters()
             .then(response => setParams({
                 length: response.data.belt_length / 1000000,
