@@ -4,20 +4,27 @@ from json import JSONDecodeError
 import requests
 import asyncio
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException
 from pydantic import ValidationError
 from fastapi.responses import StreamingResponse
 from sqlmodel import SQLModel, Session, select, text
 from sqlalchemy.exc import OperationalError, DatabaseError
+from passlib.context import CryptContext
 
-from application.models.db_models import (ObjectType, Object, DefectType, Photo, Defect, Relation, ConveyorParameters,
-                                          LogType, Version)
+from application.config import Settings
 from application.db_connection import engine
+from application.models.db_models import (ObjectType, Object, DefectType, Photo, Defect, Relation, ConveyorParameters,
+                                          LogType, Version, User)
 from application.models.api_models import (ServiceInfoResponseModel, MaintenanceActionResponseModel,
                                            UserNotificationSettings)
 from application.user_settings import save_user_settings, load_user_settings
+from application.services.authentication_service import get_current_admin_user
 
-router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"])
+router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"],
+                   dependencies=[Depends(get_current_admin_user)])
+settings = Settings()
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 connectedClients = set()
 
@@ -200,6 +207,10 @@ def fill_database_with_required_and_test_data():
         session.add(log_type_report_info)
         session.add(log_type_message)
         session.add(log_type_state_of_devices)
+
+        user_admin = User(username=settings.ADMIN_USERNAME, role="Admin",
+                          password=pwd_context.hash(settings.ADMIN_PASSWORD))
+        session.add(user_admin)
 
         session.commit()
 

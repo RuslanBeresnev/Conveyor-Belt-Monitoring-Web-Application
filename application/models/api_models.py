@@ -111,3 +111,8 @@ class ConveyorInfoReportResponseModel(BaseModel):
 class UserNotificationSettings(BaseModel):
     new_defect_notification_scope: list[str]
     report_sending_scope: list[str]
+
+
+class TokenResponseModel(BaseModel):
+    access_token: str
+    token_type: str

@@ -2,15 +2,17 @@ from base64 import b64encode
 from datetime import datetime, timezone
 import requests
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, and_, not_
 
 from application.db_connection import engine
 from application.models.db_models import Object, DefectType, Defect, Relation
 from application.models.api_models import (ServiceInfoResponseModel, CountOfDefectGroupsResponseModel,
                                            DefectResponseModel, TypesOfDefectsResponseModel)
+from application.services.authentication_service import get_current_admin_user
 
-router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"])
+router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"],
+                   dependencies=[Depends(get_current_admin_user)])
 
 
 def determine_defect_criticality(defect: Defect):

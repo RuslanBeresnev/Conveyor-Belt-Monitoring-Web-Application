@@ -151,3 +151,11 @@ class CameraSettings(SQLModel, table=True):
     __tablename__ = "camera_settings"
     id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
     mm_pix: int = Field(nullable=False)
+
+
+class User(SQLModel, table=True):
+    __tablename__ = "user"
+    id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False, autoincrement=True))
+    username: str = Field(nullable=False)
+    role: str = Field(nullable=False)
+    password: str = Field(nullable=False)

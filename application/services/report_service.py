@@ -7,7 +7,7 @@ import json
 import PIL
 import requests
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from reportlab.lib.colors import Color
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Image, ListFlowable, Spacer
@@ -17,8 +17,10 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from application.user_settings import load_user_settings
 from application.models.api_models import (ServiceInfoResponseModel, DefectResponseModel, AllDefectsReportResponseModel,
                                            OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
+from application.services.authentication_service import get_current_admin_user
 
-router = APIRouter(prefix="/report", tags=["Reports Generation Service"])
+router = APIRouter(prefix="/report", tags=["Reports Generation Service"],
+                   dependencies=[Depends(get_current_admin_user)])
 
 
 def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo_size: (int, int)):

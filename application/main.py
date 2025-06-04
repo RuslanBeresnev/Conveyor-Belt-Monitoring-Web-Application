@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import Settings
 from .db_listener import lifespan
+from application.services.authentication_service import router as authentication_service_router
 from application.services.notification_service import router as notification_service_router
 from application.services.defect_info_service import router as defect_info_service_router
 from application.services.conveyor_info_service import router as conveyor_info_service_router
@@ -13,6 +14,7 @@ from application.models.api_models import ServiceInfoResponseModel
 
 api_router = APIRouter(prefix="/api/v1")
 
+api_router.include_router(authentication_service_router)
 api_router.include_router(notification_service_router)
 api_router.include_router(defect_info_service_router)
 api_router.include_router(conveyor_info_service_router)

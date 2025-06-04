@@ -1,15 +1,17 @@
 from datetime import datetime, timezone
 import requests
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select, desc
 
 from application.db_connection import engine
 from application.models.db_models import ObjectType, Object, ConveyorParameters, ConveyorStatus
 from application.models.api_models import (ServiceInfoResponseModel, ConveyorParametersResponseModel,
                                            ConveyorStatusResponseModel, NewConveyorParameters)
+from application.services.authentication_service import get_current_admin_user
 
-router = APIRouter(prefix="/conveyor_info", tags=["Conveyor General Information Service"])
+router = APIRouter(prefix="/conveyor_info", tags=["Conveyor General Information Service"],
+                   dependencies=[Depends(get_current_admin_user)])
 
 
 def determine_criticality_of_conveyor_status(conveyor_status: ConveyorStatus):

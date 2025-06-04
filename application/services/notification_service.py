@@ -11,7 +11,7 @@ from enum import Enum
 import requests
 import httpx
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
 from telegram import Bot
 import telegram.error
@@ -26,8 +26,10 @@ from googleapiclient.errors import HttpError
 from application.config import Settings
 from application.models.api_models import (TelegramNotification, GmailNotification, ServiceInfoResponseModel,
                                            TelegramNotificationResponseModel, GmailNotificationResponseModel)
+from application.services.authentication_service import get_current_admin_user
 
-router = APIRouter(prefix="/notification", tags=["Notification Service"])
+router = APIRouter(prefix="/notification", tags=["Notification Service"],
+                   dependencies=[Depends(get_current_admin_user)])
 settings = Settings()
 
 telegram_bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)

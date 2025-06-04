@@ -1,14 +1,16 @@
 from datetime import datetime, timezone
 import requests
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, desc, text
 
 from application.db_connection import engine
 from application.models.db_models import ObjectType, Object, LogType, Log
 from application.models.api_models import ServiceInfoResponseModel, LogResponseModel, AllLogsRemovingResponseModel
+from application.services.authentication_service import get_current_admin_user
 
-router = APIRouter(prefix="/logs", tags=["Logging Service"])
+router = APIRouter(prefix="/logs", tags=["Logging Service"],
+                   dependencies=[Depends(get_current_admin_user)])
 
 
 def form_response_model_from_log(log: Log):
