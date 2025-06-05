@@ -13,10 +13,11 @@ export default function App() {
     useSSE();
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [currentSection, setCurrentSection] = useState('');
+    const [currentSection, setCurrentSection] = useState('Conveyor Belt Monitoring Web Application');
 
     const location = useLocation();
     const pathToSectionTitle = {
+        '/auth': 'Conveyor Belt Monitoring Web Application',
         '/defects': 'Defects',
         '/conveyor': 'Conveyor',
         '/logs': 'Logs',

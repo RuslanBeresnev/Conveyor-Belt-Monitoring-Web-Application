@@ -1,5 +1,6 @@
 from datetime import datetime
 from json import JSONDecodeError
+from typing import Annotated
 
 import requests
 import asyncio
@@ -20,8 +21,7 @@ from application.models.api_models import (ServiceInfoResponseModel, Maintenance
 from application.user_settings import save_user_settings, load_user_settings
 from application.services.authentication_service import get_current_admin_user
 
-router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"],
-                   dependencies=[Depends(get_current_admin_user)])
+router = APIRouter(prefix="/maintenance", tags=["Maintenance Service"])
 settings = Settings()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -35,7 +35,7 @@ async def notify_clients(message: str):
 
 
 @router.get(path="/", response_model=ServiceInfoResponseModel)
-def get_service_info():
+def get_service_info(user_admin: Annotated[User, Depends(get_current_admin_user)]):
     return ServiceInfoResponseModel(
         info="Service providing functionality to support a database and application"
     )
@@ -62,12 +62,12 @@ async def subscribe_client_to_server_events(request: Request):
 
 
 @router.get(path="/check_server", response_model=MaintenanceActionResponseModel)
-def check_server_availability():
+def check_server_availability(user_admin: Annotated[User, Depends(get_current_admin_user)]):
     return MaintenanceActionResponseModel(maintenance_info="OK")
 
 
 @router.get(path="/check_database", response_model=MaintenanceActionResponseModel)
-def check_database_availability():
+def check_database_availability(user_admin: Annotated[User, Depends(get_current_admin_user)]):
     try:
         with Session(engine) as session:
             session.connection().execute(text("SELECT 0"))
@@ -82,7 +82,8 @@ def check_database_availability():
 
 
 @router.post(path="/create_tables", response_model=MaintenanceActionResponseModel)
-def create_or_recreate_all_database_tables(test_mode: bool = False):
+def create_or_recreate_all_database_tables(user_admin: Annotated[User, Depends(get_current_admin_user)],
+                                           test_mode: bool = False):
     if not test_mode:
         with Session(engine) as session:
             # Removing trigger function with trigger (SQLModel.metadata.drop_all() removes only tables)
@@ -122,7 +123,7 @@ def create_or_recreate_all_database_tables(test_mode: bool = False):
 
 
 @router.post(path="/fill_database", response_model=MaintenanceActionResponseModel)
-def fill_database_with_required_and_test_data():
+def fill_database_with_required_and_test_data(user_admin: Annotated[User, Depends(get_current_admin_user)]):
     # pylint: disable=R0914
     with Session(engine) as session:
         current_db_version = Version()
@@ -224,7 +225,7 @@ def fill_database_with_required_and_test_data():
 
 
 @router.post(path="/add_test_defect", response_model=MaintenanceActionResponseModel)
-def add_test_defect_to_database():
+def add_test_defect_to_database(user_admin: Annotated[User, Depends(get_current_admin_user)]):
     with Session(engine) as session:
         object_type_for_defect = session.exec(select(ObjectType).where(ObjectType.name == "defect")).one()
         object_type_for_photo = session.exec(select(ObjectType).where(ObjectType.name == "photo")).one()
@@ -256,7 +257,8 @@ def add_test_defect_to_database():
 
 
 @router.post(path="/make_relation", response_model=MaintenanceActionResponseModel)
-def create_relation_between_two_defects_without_chain_checking(previous_defect_id: int, current_defect_id: int):
+def create_relation_between_two_defects_without_chain_checking(
+    user_admin: Annotated[User, Depends(get_current_admin_user)], previous_defect_id: int, current_defect_id: int):
     with Session(engine) as session:
         if previous_defect_id == current_defect_id:
             # Action logging
@@ -291,7 +293,8 @@ def create_relation_between_two_defects_without_chain_checking(previous_defect_i
 
 
 @router.delete(path="/remove_relation", response_model=MaintenanceActionResponseModel)
-def remove_relation_between_two_defects_without_chain_checking(previous_defect_id: int, current_defect_id: int):
+def remove_relation_between_two_defects_without_chain_checking(
+        user_admin: Annotated[User, Depends(get_current_admin_user)], previous_defect_id: int, current_defect_id: int):
     with (Session(engine) as session):
         if previous_defect_id == current_defect_id:
             # Action logging
@@ -325,7 +328,7 @@ def remove_relation_between_two_defects_without_chain_checking(previous_defect_i
 
 
 @router.get(path="/get_user_notification_settings", response_model=UserNotificationSettings)
-def get_user_notification_settings():
+def get_user_notification_settings(user_admin: Annotated[User, Depends(get_current_admin_user)]):
     try:
         user_settings = load_user_settings()
     except JSONDecodeError as e:
@@ -343,6 +346,7 @@ def get_user_notification_settings():
 
 
 @router.put(path="/update_user_notification_settings", response_model=UserNotificationSettings)
-def update_user_notification_settings(updated_settings: UserNotificationSettings):
+def update_user_notification_settings(user_admin: Annotated[User, Depends(get_current_admin_user)],
+                                      updated_settings: UserNotificationSettings):
     save_user_settings(updated_settings.model_dump())
     return updated_settings
