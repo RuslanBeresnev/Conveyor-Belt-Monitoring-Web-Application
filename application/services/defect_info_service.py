@@ -19,18 +19,17 @@ router = APIRouter(prefix="/defect_info", tags=["Defects Information Service"],
 def determine_defect_criticality(defect: Defect):
     if defect.is_critical:
         return "critical"
-    elif defect.is_extreme:
+    if defect.is_extreme:
         return "extreme"
-    else:
-        return "normal"
+    return "normal"
 
 
 def determine_criticality_select_condition(criticality: str):
     if criticality == "critical":
         return Defect.is_critical
-    elif criticality == "extreme":
+    if criticality == "extreme":
         return Defect.is_extreme
-    elif criticality == "normal":
+    if criticality == "normal":
         return and_(not_(Defect.is_critical), not_(Defect.is_extreme))
     return False
 
@@ -154,7 +153,7 @@ def get_filtered_defects_by_all_parameters(defect_type: str = "all", criticality
 
 @router.get(path="/all_types", response_model=TypesOfDefectsResponseModel)
 def get_all_types_of_defects():
-    with (Session(engine) as session):
+    with Session(engine) as session:
         result = session.exec(select(DefectType)).all()
         types = [defect_type.name for defect_type in result]
         return TypesOfDefectsResponseModel(
@@ -213,9 +212,8 @@ def change_criticality_of_defect_by_id(defect_id: int, is_extreme: bool, is_crit
         if defect.is_extreme == is_extreme and defect.is_critical == is_critical:
             response = form_response_model_from_defect(defect)
             return response
-        else:
-            defect.is_extreme = is_extreme
-            defect.is_critical = is_critical
+        defect.is_extreme = is_extreme
+        defect.is_critical = is_critical
         current_criticality = determine_defect_criticality(defect)
 
         session.add(defect)

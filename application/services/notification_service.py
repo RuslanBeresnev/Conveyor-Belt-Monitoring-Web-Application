@@ -8,8 +8,8 @@ from io import BytesIO
 from os.path import exists
 from base64 import urlsafe_b64encode
 from enum import Enum
-import requests
 from typing import IO
+import requests
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
@@ -32,7 +32,7 @@ from application.services.logging_service import create_log_record
 router = APIRouter(prefix="/notification", tags=["Notification Service"],
                    dependencies=[Depends(get_current_admin_user)])
 
-telegram_bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+telegram_bot = Bot(token=settings.telegram_bot_token)
 
 GOOGLE_CLIENT_SECRET_FILE = "client_secret.json"
 GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
@@ -82,14 +82,14 @@ async def _form_io_file_from_attached_file(attached_file: UploadFile | None = Fi
 
 
 def write_telegram_user_name_and_chat_id_to_env_file(user_name, user_chat_id):
-    settings.TELEGRAM_USER_NAME = user_name
-    settings.TELEGRAM_USER_CHAT_ID = user_chat_id
+    settings.telegram_user_name = user_name
+    settings.telegram_user_chat_id = user_chat_id
 
     settings_dump = settings.model_dump()
     settings_to_text = "\n".join(
         [f"{param_name} = \"{param_value}\"" for param_name, param_value in settings_dump.items()])
 
-    with open(".env", "w") as env:
+    with open(".env", "w", encoding="utf-8") as env:
         env.write(settings_to_text)
 
 
@@ -99,10 +99,10 @@ def get_user_chat_id_in_telegram():
     (if the user has once sent a message to the bot), <username> is unique user nick seems like "@test_user",
     <error_message> gives information in the case of emergency situation.
     """
-    if settings.TELEGRAM_USER_NAME != "" and settings.TELEGRAM_USER_CHAT_ID != "":
-        return settings.TELEGRAM_USER_CHAT_ID, settings.TELEGRAM_USER_NAME, None
+    if settings.telegram_user_name != "" and settings.telegram_user_chat_id != "":
+        return settings.telegram_user_chat_id, settings.telegram_user_name, None
 
-    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getUpdates"
+    url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/getUpdates"
     response = requests.get(url, timeout=3)
     updates = response.json()
     if not updates["ok"]:
@@ -130,13 +130,13 @@ async def _send_data_by_telegram(message: str, attached_file: IO | None = None):
             await telegram_bot.send_message(chat_id=user_chat_id, text=message)
         else:
             await telegram_bot.send_document(chat_id=user_chat_id, document=attached_file, caption=message)
-    except telegram.error.InvalidToken as e:
+    except telegram.error.InvalidToken:
         error_type = NotificationSendingErrorType.INVALID_BOT_TOKEN
         # Action logging
         create_log_record("error", "Error has occurred while sending notification via Telegram. "
                                    f"Error info: \"{error_type.value}\"")
         return username, error_type
-    except telegram.error.TelegramError as e:
+    except telegram.error.TelegramError:
         error_type = NotificationSendingErrorType.TELEGRAM_ERROR
         # Action logging
         create_log_record("error", "Error has occurred while sending notification via Telegram. "
@@ -212,7 +212,7 @@ def _send_data_by_gmail(subject: str, text: str, attached_file: IO | None = None
     else:
         message = MIMEMultipart()
 
-    message["to"] = settings.GMAIL_ADDRESS
+    message["to"] = settings.gmail_address
     message["subject"] = subject
 
     if attached_file:
@@ -242,7 +242,7 @@ def _send_data_by_gmail(subject: str, text: str, attached_file: IO | None = None
 
     try:
         gmail_service = build(serviceName="gmail", version="v1", credentials=credentials)
-    except DefaultCredentialsError as e:
+    except DefaultCredentialsError:
         error_type = NotificationSendingErrorType.INCORRECT_CREDENTIALS
         # Action logging
         create_log_record("error", "Error has occurred while sending notification via Gmail. "
@@ -252,14 +252,14 @@ def _send_data_by_gmail(subject: str, text: str, attached_file: IO | None = None
     try:
         # pylint: disable=E1101
         gmail_service.users().messages().send(userId="me", body=formatted_message).execute()
-    except HttpError as e:
+    except HttpError:
         error_type = NotificationSendingErrorType.HTTP_ERROR
         # Action logging
         create_log_record("error", "Error has occurred while sending notification via Gmail. "
                                    f"Error info: {error_type.value}")
         return error_type
 
-    except TypeError as e:
+    except TypeError:
         error_type = NotificationSendingErrorType.INVALID_MESSAGE_FORMAT
         # Action logging
         create_log_record("error", "Error has occurred while sending notification via Gmail. "
@@ -318,7 +318,7 @@ async def send_gmail_notification(notification: GmailNotification = Depends(),
 
     return GmailNotificationResponseModel(
         notification_method="gmail_notification",
-        to=settings.GMAIL_ADDRESS,
+        to=settings.gmail_address,
         subject=notification.subject,
         sent_text=notification.text,
         attached_file=attached_file.filename if attached_file else None

@@ -28,7 +28,7 @@ def create_access_token(data: dict, expiration_delta: timedelta = None):
     to_encode = data.copy()
     expiration_timestamp = datetime.now(timezone.utc) + (expiration_delta or timedelta(minutes=15))
     to_encode.update({"exp": expiration_timestamp})
-    return jwt.encode(to_encode, settings.JWT_SIGN_SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, settings.jwt_sign_secret_key, algorithm=ALGORITHM)
 
 
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
@@ -39,12 +39,12 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     )
 
     try:
-        payload = jwt.decode(token, settings.JWT_SIGN_SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.jwt_sign_secret_key, algorithms=[ALGORITHM])
         username = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+    except JWTError as e:
+        raise credentials_exception from e
 
     with Session(engine) as session:
         user = session.exec(select(User).where(User.username == username)).first()
@@ -75,5 +75,5 @@ def login_in_system_and_get_token(form_data: OAuth2PasswordRequestForm = Depends
             raise HTTPException(status_code=401, detail="Incorrect username or password")
 
         token = create_access_token(data={"sub": form_data.username, "role": user.role},
-                                    expiration_delta=timedelta(minutes=settings.AUTH_TOKEN_EXPIRATION_MINUTES))
+                                    expiration_delta=timedelta(minutes=settings.auth_token_expiration_minutes))
         return {"access_token": token, "token_type": "bearer"}

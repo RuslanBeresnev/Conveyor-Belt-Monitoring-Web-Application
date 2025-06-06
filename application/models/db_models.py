@@ -21,16 +21,16 @@ class Object(SQLModel, table=True):
     type_object: ObjectType = Relationship(back_populates="objects")
 
     # 1:1 relation
-    defect: "Defect" = Relationship(sa_relationship_kwargs=dict(uselist=False), back_populates="base_object",
+    defect: "Defect" = Relationship(sa_relationship_kwargs={"uselist": False}, back_populates="base_object",
                                     cascade_delete=True)
     # 1:1 relation
-    photo: "Photo" = Relationship(sa_relationship_kwargs=dict(uselist=False), back_populates="base_object",
+    photo: "Photo" = Relationship(sa_relationship_kwargs={"uselist": False}, back_populates="base_object",
                                   cascade_delete=True)
     # 1:1 relation
-    conveyor_status: "ConveyorStatus" = Relationship(sa_relationship_kwargs=dict(uselist=False),
+    conveyor_status: "ConveyorStatus" = Relationship(sa_relationship_kwargs={"uselist": False},
                                                      back_populates="base_object", cascade_delete=True)
     # 1:1 relation
-    log: "Log" = Relationship(sa_relationship_kwargs=dict(uselist=False), back_populates="base_object",
+    log: "Log" = Relationship(sa_relationship_kwargs={"uselist": False}, back_populates="base_object",
                               cascade_delete=True)
 
 
@@ -82,11 +82,11 @@ class Defect(SQLModel, table=True):
 
     # Link to the object of this defect in Relation table (1:1 relation)
     current_defect_in_relation: "Relation" = (
-        Relationship(sa_relationship_kwargs=dict(uselist=False, foreign_keys="[Relation.id_current]"),
+        Relationship(sa_relationship_kwargs={"uselist": False, "foreign_keys": "[Relation.id_current]"},
                      back_populates="current_defect_object", cascade_delete=True))
     # Link to the object of previous defect for this in Relation table (1:1 relation)
     previous_defect_in_relation: "Relation" = (
-        Relationship(sa_relationship_kwargs=dict(uselist=False, foreign_keys="[Relation.id_previous]"),
+        Relationship(sa_relationship_kwargs={"uselist": False, "foreign_keys": "[Relation.id_previous]"},
                      back_populates="previous_defect_object", cascade_delete=True))
 
 
@@ -99,9 +99,9 @@ class Relation(SQLModel, table=True):
     id_current: int = Field(foreign_key="defects.id", primary_key=True, nullable=False, ondelete="CASCADE")
     id_previous: int = Field(foreign_key="defects.id", primary_key=True, nullable=False, ondelete="CASCADE")
 
-    current_defect_object: Defect = Relationship(sa_relationship_kwargs=dict(foreign_keys="[Relation.id_current]"),
+    current_defect_object: Defect = Relationship(sa_relationship_kwargs={"foreign_keys": "[Relation.id_current]"},
                                                  back_populates="current_defect_in_relation")
-    previous_defect_object: Defect = Relationship(sa_relationship_kwargs=dict(foreign_keys="[Relation.id_previous]"),
+    previous_defect_object: Defect = Relationship(sa_relationship_kwargs={"foreign_keys": "[Relation.id_previous]"},
                                                   back_populates="previous_defect_in_relation")
 
 

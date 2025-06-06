@@ -18,21 +18,24 @@ client = TestClient(application)
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_module():
-    process = subprocess.Popen(["uvicorn", "application.main:application", "--host", "127.0.0.1", "--port", "8000"])
-    time.sleep(3)
+    with subprocess.Popen(["uvicorn", "application.main:application", "--host", "127.0.0.1", "--port", "8000"]):
+        time.sleep(3)
 
-    try:
-        client.post(url="/maintenance/create_tables", params={"test_mode": True})
-        client.post(url="/maintenance/fill_database")
-        yield
-    finally:
-        SQLModel.metadata.drop_all(engine)
-        process.terminate()
+        try:
+            client.post(url="/maintenance/create_tables", params={"test_mode": True})
+            client.post(url="/maintenance/fill_database")
+            yield
+        finally:
+            SQLModel.metadata.drop_all(engine)
+
 
 # Protection against changes to the production database
-if settings.DATABASE_URL.split("/")[-1] != "test_db":
+if settings.database_url.split("/")[-1] != "test_db":
     raise ValueError("USING NON-TEST DATABASE CONNECTION PARAMETERS. CHANGE THE \"DATABASE_URL\" PARAMETER "
                      "IN THE .env FILE")
+
+with open("application/test_defect.jpg", "rb") as file:
+    encoded_photo = b64encode(file.read()).decode()
 
 defect_1_response_json = {
     "id": 1,
@@ -45,7 +48,7 @@ defect_1_response_json = {
     "transverse_position": 10,
     "probability": 90,
     "criticality": "extreme",
-    "base64_photo": b64encode(open("application/test_defect.jpg", "rb").read()).decode()
+    "base64_photo": encoded_photo
 }
 
 defect_2_response_json = {
@@ -59,7 +62,7 @@ defect_2_response_json = {
     "transverse_position": 10,
     "probability": 95,
     "criticality": "critical",
-    "base64_photo": b64encode(open("application/test_defect.jpg", "rb").read()).decode()
+    "base64_photo": encoded_photo
 }
 
 

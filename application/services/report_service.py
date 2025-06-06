@@ -41,23 +41,23 @@ def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo
         image_raw_data = None
         try:
             image_raw_data = base64.b64decode(base64_photo)
-        except (binascii.Error, TypeError):
+        except (binascii.Error, TypeError) as e:
             error_type = "Decoding error"
             error_text = "incorrect base64-encoded representation of the photo"
             # Action logging
             create_log_record("error", "Failed to generate table of the defects in pdf-report: "
                                        f"{error_text}")
-            raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}")
+            raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}") from e
         try:
             image_buffer = BytesIO(image_raw_data)
             image = Image(image_buffer, width=photo_size[0], height=photo_size[1])
-        except (PIL.UnidentifiedImageError, TypeError):
+        except (PIL.UnidentifiedImageError, TypeError) as e:
             error_type = "Unidentified image error"
             error_text = "raw representation of the photo is not bytes or has corrupted bytes sequence"
             # Action logging
             create_log_record("error", "Failed to generate table of the defects in pdf-report: "
                                        f"{error_text}")
-            raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}")
+            raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}") from e
         defect_values[-1] = image
     return table_values
 
@@ -76,7 +76,7 @@ def render_table_of_defects(table: Table, table_data: list):
         ('GRID', (0, 0), (-1, -1), 1, colors.black)
     ]))
 
-    for i in range(len(table_data)):
+    for i, _ in enumerate(table_data):
         if table_data[i][9] == "extreme":
             table.setStyle(TableStyle([
                 ('BACKGROUND', (0, i), (-1, i), colors.orange),
@@ -118,6 +118,7 @@ def get_service_info():
 
 @router.post(path="/all/pdf", response_model=AllDefectsReportResponseModel)
 async def upload_report_of_all_defects_in_pdf_format():
+    # pylint: disable=R0914
     filename = "report_of_all_defects.pdf"
     report_doc = SimpleDocTemplate(filename, pagesize=landscape(A4))
     all_defects = get_all_defects()
@@ -179,6 +180,7 @@ async def upload_report_of_all_defects_in_pdf_format():
 
 @router.post(path="/id={defect_id}/pdf", response_model=OneDefectReportResponseModel)
 async def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
+    # pylint: disable=R0914
     filename = f"report_of_defect_id_{defect_id}.pdf"
     report_doc = SimpleDocTemplate(filename, pagesize=A4)
     try:
@@ -187,7 +189,7 @@ async def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
         # Action logging
         create_log_record("error", f"Failed to generate pdf-report of the defect with id={defect_id}: "
                                    f"{e.detail}")
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from e
 
     # Paragraph style for header text line break
     header_style = getSampleStyleSheet()["Normal"]
@@ -349,7 +351,7 @@ async def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
         # Action logging
         create_log_record("error", f"Failed to generate csv-report of the defect with id={defect_id}: "
                                    f"{e.detail}")
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from e
 
     # Parameter "base64_photo" excluded from header and lines because base64-representation of defect's photo is large
     csv_headers = ",".join([str(key) for key in defect.model_dump().keys() if key != "base64_photo"]) + "\n"

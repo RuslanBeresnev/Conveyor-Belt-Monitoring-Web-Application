@@ -17,10 +17,9 @@ router = APIRouter(prefix="/conveyor_info", tags=["Conveyor General Information 
 def determine_criticality_of_conveyor_status(conveyor_status: ConveyorStatus):
     if conveyor_status.is_critical:
         return "critical"
-    elif conveyor_status.is_extreme:
+    if conveyor_status.is_extreme:
         return "extreme"
-    else:
-        return "normal"
+    return "normal"
 
 
 def form_response_model_from_conveyor_status(conveyor_status: ConveyorStatus):

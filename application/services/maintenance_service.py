@@ -5,8 +5,8 @@ from typing import Annotated
 import asyncio
 
 from fastapi import APIRouter, Depends, Request, HTTPException
-from pydantic import ValidationError
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 from sqlmodel import SQLModel, Session, select, text
 from sqlalchemy.exc import OperationalError, DatabaseError
 from passlib.context import CryptContext
@@ -33,8 +33,121 @@ async def notify_clients(message: str):
         await queue.put(message)
 
 
-@router.get(path="/", response_model=ServiceInfoResponseModel)
-def get_service_info(user_admin: Annotated[User, Depends(get_current_admin_user)]):
+def create_versions():
+    return [Version()]
+
+
+def create_conveyor_parameters():
+    return [ConveyorParameters()]
+
+
+def create_object_types():
+    return [
+        ObjectType(name="defect"),
+        ObjectType(name="conv_state"),
+        ObjectType(name="history"),
+        ObjectType(name="photo"),
+    ]
+
+
+def create_defect_types():
+    return [
+        DefectType(name="chip", is_belt=False),
+        DefectType(name="delamination", is_belt=False),
+        DefectType(name="rope"),
+        DefectType(name="crack"),
+        DefectType(name="liftup"),
+        DefectType(name="hole"),
+        DefectType(name="tear"),
+        DefectType(name="wear"),
+        DefectType(name="joint"),
+        DefectType(name="joint_worn"),
+    ]
+
+
+def create_objects(object_types):
+    defect_type = next((object_type for object_type in object_types if object_type.name == "defect"), None)
+    photo_type = next((object_type for object_type in object_types if object_type.name == "photo"), None)
+
+    return [
+        Object(type_object=defect_type, time=datetime(2025, 1, 1)),
+        Object(type_object=defect_type, time=datetime(2025, 1, 2)),
+        Object(type_object=photo_type, time=datetime(2025, 1, 1)),
+        Object(type_object=photo_type, time=datetime(2025, 1, 2)),
+    ]
+
+
+def create_photos(objects_photo):
+    with open("application/services/test_defect.jpg", "rb") as file:
+        image_data = file.read()
+
+    return [
+        Photo(base_object=objects_photo[0], image=image_data),
+        Photo(base_object=objects_photo[1], image=image_data),
+    ]
+
+
+def create_defects(objects_of_defects, defect_types, photos):
+    defect_type_hole = next(defect_type for defect_type in defect_types if defect_type.name == "hole")
+    defect_type_rope = next(defect_type for defect_type in defect_types if defect_type.name == "rope")
+
+    return [
+        Defect(
+            base_object=objects_of_defects[0],
+            type_object=defect_type_hole,
+            box_width=400,
+            box_length=400,
+            location_width_in_frame=10,
+            location_length_in_frame=10,
+            location_width_in_conv=216,
+            location_length_in_conv=4870000,
+            photo_object=photos[0],
+            probability=90,
+            is_critical=False,
+            is_extreme=True,
+        ),
+        Defect(
+            base_object=objects_of_defects[1],
+            type_object=defect_type_rope,
+            box_width=500,
+            box_length=500,
+            location_width_in_frame=10,
+            location_length_in_frame=10,
+            location_width_in_conv=1530,
+            location_length_in_conv=10516000,
+            photo_object=photos[1],
+            probability=95,
+            is_critical=True,
+            is_extreme=False,
+        ),
+    ]
+
+
+def create_relations(defects):
+    return [Relation(current_defect_object=defects[1], previous_defect_object=defects[0])]
+
+
+def create_log_types():
+    return [
+        LogType(name="error"),
+        LogType(name="warning"),
+        LogType(name="info"),
+        LogType(name="critical_defect"),
+        LogType(name="extreme_defect"),
+        LogType(name="action_info"),
+        LogType(name="report_info"),
+        LogType(name="message"),
+        LogType(name="state_of_devices"),
+    ]
+
+
+def add_entities_to_session(session: Session, entities: list):
+    for entity in entities:
+        session.add(entity)
+
+
+@router.get(path="/", response_model=ServiceInfoResponseModel, dependencies=[Depends(get_current_admin_user)])
+def get_service_info():
     return ServiceInfoResponseModel(
         info="Service providing functionality to support a database and application"
     )
@@ -60,24 +173,26 @@ async def subscribe_client_to_server_events(request: Request):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-@router.get(path="/check_server", response_model=MaintenanceActionResponseModel)
-def check_server_availability(user_admin: Annotated[User, Depends(get_current_admin_user)]):
+@router.get(path="/check_server", response_model=MaintenanceActionResponseModel,
+            dependencies=[Depends(get_current_admin_user)])
+def check_server_availability():
     return MaintenanceActionResponseModel(maintenance_info="OK")
 
 
-@router.get(path="/check_database", response_model=MaintenanceActionResponseModel)
-def check_database_availability(user_admin: Annotated[User, Depends(get_current_admin_user)]):
+@router.get(path="/check_database", response_model=MaintenanceActionResponseModel,
+            dependencies=[Depends(get_current_admin_user)])
+def check_database_availability():
     try:
         with Session(engine) as session:
             session.connection().execute(text("SELECT 0"))
         return MaintenanceActionResponseModel(maintenance_info="OK")
     except UnicodeDecodeError as e:
         raise HTTPException(status_code=503, detail="Connection to the database could not be established "
-                                                    "because connection string in configuration is invalid")
+                                                    "because connection string in configuration is invalid") from e
     except OperationalError as e:
-        raise HTTPException(status_code=503, detail="Some problems with database connection")
+        raise HTTPException(status_code=503, detail="Some problems with database connection") from e
     except DatabaseError as e:
-        raise HTTPException(status_code=503, detail="Some problems in database")
+        raise HTTPException(status_code=503, detail="Some problems in database") from e
 
 
 @router.post(path="/create_tables", response_model=MaintenanceActionResponseModel)
@@ -105,7 +220,7 @@ def create_or_recreate_all_database_tables(user_admin: Annotated[User, Depends(g
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-        
+
         CREATE TRIGGER trigger_on_new_defect
         AFTER INSERT ON defects
         FOR EACH ROW
@@ -117,8 +232,8 @@ def create_or_recreate_all_database_tables(user_admin: Annotated[User, Depends(g
             session.commit()
 
     with Session(engine) as session:
-        user_admin = User(username=settings.ADMIN_USERNAME, role="Admin",
-                          password=pwd_context.hash(settings.ADMIN_PASSWORD))
+        user_admin = User(username=settings.admin_username, role="Admin",
+                          password=pwd_context.hash(settings.admin_password))
         session.add(user_admin)
         session.commit()
 
@@ -127,105 +242,37 @@ def create_or_recreate_all_database_tables(user_admin: Annotated[User, Depends(g
     )
 
 
-@router.post(path="/fill_database", response_model=MaintenanceActionResponseModel)
-def fill_database_with_required_and_test_data(user_admin: Annotated[User, Depends(get_current_admin_user)]):
-    # pylint: disable=R0914
+@router.post("/fill_database", response_model=MaintenanceActionResponseModel,
+             dependencies=[Depends(get_current_admin_user)])
+def fill_database_with_required_and_test_data():
     with Session(engine) as session:
-        current_db_version = Version()
-        session.add(current_db_version)
+        versions = create_versions()
+        conveyor_params = create_conveyor_parameters()
+        object_types = create_object_types()
+        defect_types = create_defect_types()
+        objects = create_objects(object_types)
+        photos = create_photos(objects[2:4])
+        defects = create_defects(objects[0:2], defect_types, photos)
+        relations = create_relations(defects)
+        log_types = create_log_types()
 
-        conveyor_default_parameters = ConveyorParameters()
-        session.add(conveyor_default_parameters)
-
-        object_type_for_defect = ObjectType(name="defect")
-        object_type_for_conv_state = ObjectType(name="conv_state")
-        object_type_for_history = ObjectType(name="history")
-        object_type_for_photo = ObjectType(name="photo")
-        session.add(object_type_for_defect)
-        session.add(object_type_for_conv_state)
-        session.add(object_type_for_history)
-        session.add(object_type_for_photo)
-
-        defect_type_chip = DefectType(name="chip", is_belt=False)
-        defect_type_delamination = DefectType(name="delamination", is_belt=False)
-        defect_type_rope = DefectType(name="rope")
-        defect_type_crack = DefectType(name="crack")
-        defect_type_liftup = DefectType(name="liftup")
-        defect_type_hole = DefectType(name="hole")
-        defect_type_tear = DefectType(name="tear")
-        defect_type_wear = DefectType(name="wear")
-        defect_type_joint = DefectType(name="joint")
-        defect_type_joint_worn = DefectType(name="joint_worn")
-        session.add(defect_type_chip)
-        session.add(defect_type_delamination)
-        session.add(defect_type_rope)
-        session.add(defect_type_crack)
-        session.add(defect_type_liftup)
-        session.add(defect_type_hole)
-        session.add(defect_type_tear)
-        session.add(defect_type_wear)
-        session.add(defect_type_joint)
-        session.add(defect_type_joint_worn)
-
-        object_of_defect_1 = Object(type_object=object_type_for_defect, time=datetime(2025, 1, 1))
-        object_of_defect_2 = Object(type_object=object_type_for_defect, time=datetime(2025, 1, 2))
-        object_of_photo_1 = Object(type_object=object_type_for_photo, time=datetime(2025, 1, 1))
-        object_of_photo_2 = Object(type_object=object_type_for_photo, time=datetime(2025, 1, 2))
-        session.add(object_of_defect_1)
-        session.add(object_of_defect_2)
-        session.add(object_of_photo_1)
-        session.add(object_of_photo_2)
-
-        photo_1 = Photo(base_object=object_of_photo_1, image=open("application/services/test_defect.jpg", "rb").read())
-        photo_2 = Photo(base_object=object_of_photo_2, image=open("application/services/test_defect.jpg", "rb").read())
-        session.add(photo_1)
-        session.add(photo_2)
-
-        extreme_defect = Defect(base_object=object_of_defect_1, type_object=defect_type_hole, box_width=400,
-                                box_length=400, location_width_in_frame=10, location_length_in_frame=10,
-                                location_width_in_conv=216, location_length_in_conv=4870000, photo_object=photo_1,
-                                probability=90, is_critical=False, is_extreme=True)
-        critical_defect = Defect(base_object=object_of_defect_2, type_object=defect_type_rope, box_width=500,
-                                 box_length=500, location_width_in_frame=10, location_length_in_frame=10,
-                                 location_width_in_conv=1530, location_length_in_conv=10516000, photo_object=photo_2,
-                                 probability=95, is_critical=True, is_extreme=False)
-        session.add(extreme_defect)
-        session.add(critical_defect)
-
-        defects_relation = Relation(current_defect_object=critical_defect, previous_defect_object=extreme_defect)
-        session.add(defects_relation)
-
-        log_type_error = LogType(name="error")
-        log_type_warning = LogType(name="warning")
-        log_type_info = LogType(name="info")
-        log_type_critical_defect = LogType(name="critical_defect")
-        log_type_extreme_defect = LogType(name="extreme_defect")
-        log_type_action_info = LogType(name="action_info")
-        log_type_report_info = LogType(name="report_info")
-        log_type_message = LogType(name="message")
-        log_type_state_of_devices = LogType(name="state_of_devices")
-        session.add(log_type_error)
-        session.add(log_type_warning)
-        session.add(log_type_info)
-        session.add(log_type_critical_defect)
-        session.add(log_type_extreme_defect)
-        session.add(log_type_action_info)
-        session.add(log_type_report_info)
-        session.add(log_type_message)
-        session.add(log_type_state_of_devices)
+        data = [versions, conveyor_params, object_types, defect_types, objects, photos, defects, relations, log_types]
+        for group_of_entities in data:
+            add_entities_to_session(session, group_of_entities)
 
         session.commit()
 
-        # Action logging
-        create_log_record("info", "Database was filled with required fields and test defects")
+    # Action logging
+    create_log_record("info", "Database was filled with required fields and test defects")
 
-        return MaintenanceActionResponseModel(
-            maintenance_info="Database was filled with required fields and test defects"
-        )
+    return MaintenanceActionResponseModel(
+        maintenance_info="Database was filled with required fields and test defects"
+    )
 
 
-@router.post(path="/add_test_defect", response_model=MaintenanceActionResponseModel)
-def add_test_defect_to_database(user_admin: Annotated[User, Depends(get_current_admin_user)]):
+@router.post(path="/add_test_defect", response_model=MaintenanceActionResponseModel,
+             dependencies=[Depends(get_current_admin_user)])
+def add_test_defect_to_database():
     with Session(engine) as session:
         object_type_for_defect = session.exec(select(ObjectType).where(ObjectType.name == "defect")).one()
         object_type_for_photo = session.exec(select(ObjectType).where(ObjectType.name == "photo")).one()
@@ -236,7 +283,8 @@ def add_test_defect_to_database(user_admin: Annotated[User, Depends(get_current_
         session.add(object_of_defect)
         session.add(object_of_photo)
 
-        photo = Photo(base_object=object_of_photo, image=open("application/services/test_defect.jpg", "rb").read())
+        with open("application/services/test_defect.jpg", "rb") as file:
+            photo = Photo(base_object=object_of_photo, image=file.read())
         session.add(photo)
 
         defect = Defect(base_object=object_of_defect, type_object=object_of_defect_type, box_width=200,
@@ -255,9 +303,9 @@ def add_test_defect_to_database(user_admin: Annotated[User, Depends(get_current_
         )
 
 
-@router.post(path="/make_relation", response_model=MaintenanceActionResponseModel)
-def create_relation_between_two_defects_without_chain_checking(
-        user_admin: Annotated[User, Depends(get_current_admin_user)], previous_defect_id: int, current_defect_id: int):
+@router.post(path="/make_relation", response_model=MaintenanceActionResponseModel,
+             dependencies=[Depends(get_current_admin_user)])
+def create_relation_between_two_defects_without_chain_checking(previous_defect_id: int, current_defect_id: int):
     with Session(engine) as session:
         if previous_defect_id == current_defect_id:
             # Action logging
@@ -288,10 +336,10 @@ def create_relation_between_two_defects_without_chain_checking(
     )
 
 
-@router.delete(path="/remove_relation", response_model=MaintenanceActionResponseModel)
-def remove_relation_between_two_defects_without_chain_checking(
-        user_admin: Annotated[User, Depends(get_current_admin_user)], previous_defect_id: int, current_defect_id: int):
-    with (Session(engine) as session):
+@router.delete(path="/remove_relation", response_model=MaintenanceActionResponseModel,
+               dependencies=[Depends(get_current_admin_user)])
+def remove_relation_between_two_defects_without_chain_checking(previous_defect_id: int, current_defect_id: int):
+    with Session(engine) as session:
         if previous_defect_id == current_defect_id:
             # Action logging
             create_log_record("warning", "Failed to remove relation for a defect with oneself "
@@ -320,8 +368,9 @@ def remove_relation_between_two_defects_without_chain_checking(
     )
 
 
-@router.get(path="/get_user_notification_settings", response_model=UserNotificationSettings)
-def get_user_notification_settings(user_admin: Annotated[User, Depends(get_current_admin_user)]):
+@router.get(path="/get_user_notification_settings", response_model=UserNotificationSettings,
+            dependencies=[Depends(get_current_admin_user)])
+def get_user_notification_settings():
     try:
         user_settings = load_user_settings()
     except JSONDecodeError as e:
@@ -338,8 +387,8 @@ def get_user_notification_settings(user_admin: Annotated[User, Depends(get_curre
     return user_settings
 
 
-@router.put(path="/update_user_notification_settings", response_model=UserNotificationSettings)
-def update_user_notification_settings(user_admin: Annotated[User, Depends(get_current_admin_user)],
-                                      updated_settings: UserNotificationSettings):
+@router.put(path="/update_user_notification_settings", response_model=UserNotificationSettings,
+            dependencies=[Depends(get_current_admin_user)])
+def update_user_notification_settings(updated_settings: UserNotificationSettings):
     save_user_settings(updated_settings.model_dump())
     return updated_settings

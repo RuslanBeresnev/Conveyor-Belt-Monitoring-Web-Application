@@ -3,23 +3,23 @@ import base64
 from io import BytesIO
 import json
 import binascii
+from asyncio import create_task, sleep
 
 from fastapi import FastAPI
-from asyncio import create_task, sleep
 from asyncpg import connect
 from sqlmodel import Session, select
 
-from .config import settings
-from .user_settings import load_user_settings
-from .db_connection import engine
 from application.models.db_models import Defect
-
 from application.services.defect_info_service import form_response_model_from_defect, determine_defect_criticality
 from application.services.conveyor_info_service import create_record_of_current_general_conveyor_status
 from application.services.notification_service import (send_telegram_notification_from_server,
                                                        send_gmail_notification_from_server)
 from application.services.maintenance_service import notify_clients
 from application.services.logging_service import create_log_record
+
+from .config import settings
+from .user_settings import load_user_settings
+from .db_connection import engine
 
 
 async def send_error_notification(subject: str, message: str):
@@ -50,7 +50,7 @@ async def send_error_notification(subject: str, message: str):
                                 f"Failure notification info: \n{message}"}))
 
 
-async def on_new_defect_notify_handler(connection, pid, channel, payload):
+async def on_new_defect_notify_handler(_connection, _pid, _channel, payload):
     try:
         json_payload = json.loads(payload)
     except (json.JSONDecodeError, KeyError) as e:
@@ -67,7 +67,6 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
     defect_to_text = "\n".join([f"{key} = {str(value)}" for (key, value) in
                                 formatted_defect.model_dump(exclude={"base64_photo"}).items()])
 
-    defect_photo = None
     try:
         defect_photo = BytesIO(base64.b64decode(formatted_defect.base64_photo))
         defect_photo.name = "Defect.jpg"
@@ -109,13 +108,13 @@ async def on_new_defect_notify_handler(connection, pid, channel, payload):
 
 
 async def listen_for_new_defects():
-    db_connection = await connect(settings.DATABASE_URL)
+    db_connection = await connect(settings.database_url)
     await db_connection.add_listener("new_defect", on_new_defect_notify_handler)
     while True:
         await sleep(1)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     create_task(listen_for_new_defects())
     yield
