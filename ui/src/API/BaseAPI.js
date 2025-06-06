@@ -13,19 +13,12 @@ export function createServiceApi(serviceName) {
 
     serviceApi.interceptors.request.use(
         (config) => {
-            if (!AuthenticationUtils.checkAuth()) {
-                AuthenticationUtils.logout();
-                return Promise.reject(new Error("Access token is invalid or has expired. " +
-                    "Please authenticate again."));
-            }
-
             const token = localStorage.getItem('access_token');
             if (token) {
                 config.headers["Authorization"] = `Bearer ${token}`;
             }
             return config;
-        },
-        (error) => Promise.reject(error)
+        }
     );
 
     serviceApi.interceptors.response.use(

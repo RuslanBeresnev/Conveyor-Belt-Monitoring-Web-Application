@@ -1,6 +1,5 @@
 from sqlmodel import create_engine
 
-from .config import Settings
+from .config import settings
 
-settings = Settings()
 engine = create_engine(settings.DATABASE_URL)

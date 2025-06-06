@@ -2,10 +2,8 @@ import base64
 from datetime import datetime
 from io import BytesIO
 import binascii
-import json
 
 import PIL
-import requests
 
 from fastapi import APIRouter, Depends, HTTPException
 from reportlab.lib.colors import Color
@@ -18,6 +16,13 @@ from application.user_settings import load_user_settings
 from application.models.api_models import (ServiceInfoResponseModel, DefectResponseModel, AllDefectsReportResponseModel,
                                            OneDefectReportResponseModel, ConveyorInfoReportResponseModel)
 from application.services.authentication_service import get_current_admin_user
+from application.services.notification_service import (send_telegram_notification_from_server,
+                                                       send_gmail_notification_from_server)
+from application.services.defect_info_service import (get_count_of_all_and_extreme_and_critical_defects,
+                                                      get_all_defects, get_defect_by_id, get_critical_defects,
+                                                      get_extreme_defects)
+from application.services.conveyor_info_service import get_base_conveyor_parameters, get_general_status_of_conveyor
+from application.services.logging_service import create_log_record
 
 router = APIRouter(prefix="/report", tags=["Reports Generation Service"],
                    dependencies=[Depends(get_current_admin_user)])
@@ -28,9 +33,9 @@ def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo
     Parse array of json-defects into list of lists with values only.
     Also format timestamp value to readable format and replace base64-string with real photo in DefectResponseModel obj
     """
-    table_values = [[value for key, value in defect.items()] for defect in defects]
+    table_values = [list(defect.model_dump().values()) for defect in defects]
     for defect_values in table_values:
-        timestamp = datetime.fromisoformat(defect_values[1])
+        timestamp = datetime.fromisoformat(str(defect_values[1]))
         defect_values[1] = timestamp.strftime("%d.%m.%Y\n%H:%M:%S")
         base64_photo = defect_values[-1]
         image_raw_data = None
@@ -40,9 +45,8 @@ def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo
             error_type = "Decoding error"
             error_text = "incorrect base64-encoded representation of the photo"
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                          params={"log_type": "error", "log_text": "Failed to generate table of the defects in "
-                                                                   f"pdf-report: {error_text}"})
+            create_log_record("error", "Failed to generate table of the defects in pdf-report: "
+                                       f"{error_text}")
             raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}")
         try:
             image_buffer = BytesIO(image_raw_data)
@@ -51,9 +55,8 @@ def format_defects_to_display_in_table(defects: list[DefectResponseModel], photo
             error_type = "Unidentified image error"
             error_text = "raw representation of the photo is not bytes or has corrupted bytes sequence"
             # Action logging
-            requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                          params={"log_type": "error",
-                                  "log_text": f"Failed to generate table of the defects in pdf-report: {error_text}"})
+            create_log_record("error", "Failed to generate table of the defects in pdf-report: "
+                                       f"{error_text}")
             raise HTTPException(status_code=500, detail=f"{error_type}: {error_text}")
         defect_values[-1] = image
     return table_values
@@ -91,31 +94,19 @@ def convert_color_to_hex(color: Color):
     return f"#{r:02X}{g:02X}{b:02X}"
 
 
-def send_report_as_notification(filename: str, caption: str):
-    try:
-        telegram_response = None
-        gmail_response = None
+async def send_report_as_notification(filename: str, caption: str):
+    error_status_code, details = None, None
 
-        # Sending generated report via Telegram
-        if not load_user_settings() or "Telegram" in load_user_settings()["report_sending_scope"]:
-            telegram_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_telegram",
-                                              params={"message": caption}, files=[("attached_file", open(filename, "rb"))])
-        # Sending generated report via Gmail
-        if not load_user_settings() or "Gmail" in load_user_settings()["report_sending_scope"]:
-            gmail_response = requests.post(url="http://127.0.0.1:8000/api/v1/notification/with_gmail",
-                                           params={"subject": caption, "text": ""},
-                                           files=[("attached_file", open(filename, "rb"))])
+    # Sending generated report via Telegram
+    if not load_user_settings() or "Telegram" in load_user_settings()["report_sending_scope"]:
+        error_status_code, details = await send_telegram_notification_from_server(message=caption,
+                                                                                  filename=filename)
+    # Sending generated report via Gmail
+    if not load_user_settings() or "Gmail" in load_user_settings()["report_sending_scope"]:
+        error_status_code, details = send_gmail_notification_from_server(subject=caption, text="",
+                                                                               filename=filename)
 
-        if telegram_response: telegram_response.raise_for_status()
-        if gmail_response: gmail_response.raise_for_status()
-    except requests.HTTPError as e:
-        error_status_code = e.response.status_code
-        try:
-            details = json.loads(e.response.text).get("detail")
-        except json.JSONDecodeError:
-            details = e.response.text
-        return error_status_code, details
-    return None, "Notifications successfully sent"
+    return error_status_code, details
 
 
 @router.get(path="/", response_model=ServiceInfoResponseModel)
@@ -126,10 +117,10 @@ def get_service_info():
 
 
 @router.post(path="/all/pdf", response_model=AllDefectsReportResponseModel)
-def upload_report_of_all_defects_in_pdf_format():
+async def upload_report_of_all_defects_in_pdf_format():
     filename = "report_of_all_defects.pdf"
     report_doc = SimpleDocTemplate(filename, pagesize=landscape(A4))
-    all_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/all").json()
+    all_defects = get_all_defects()
 
     # Paragraph style for header text line break
     header_style = getSampleStyleSheet()["Normal"]
@@ -149,8 +140,8 @@ def upload_report_of_all_defects_in_pdf_format():
     title_style.spaceAfter = 16
     title = Paragraph(f"REPORT ABOUT DEFECTS ({datetime.now().strftime("%d.%m.%Y - %H:%M")})", title_style)
 
-    extreme_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/extreme").json()
-    critical_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/critical").json()
+    extreme_defects = get_extreme_defects()
+    critical_defects = get_critical_defects()
 
     statistics_style = getSampleStyleSheet()["Normal"]
     general_statistics = ListFlowable(
@@ -166,11 +157,12 @@ def upload_report_of_all_defects_in_pdf_format():
     report_doc.build(elements)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
-        "Report of the all defects in .pdf format has successfully generated"})
+    create_log_record("report_info", "Report of the all defects in .pdf format has "
+                                     "successfully generated")
 
     # Report sending via Telegram and Gmail
-    error_status_code, details = send_report_as_notification(filename=filename, caption="PDF-report of all defects")
+    error_status_code, details = await send_report_as_notification(filename=filename,
+                                                                   caption="PDF-report of all defects")
     if error_status_code:
         raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
                                                                   f"error during notification sending: {details}")
@@ -186,16 +178,16 @@ def upload_report_of_all_defects_in_pdf_format():
 
 
 @router.post(path="/id={defect_id}/pdf", response_model=OneDefectReportResponseModel)
-def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
+async def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
     filename = f"report_of_defect_id_{defect_id}.pdf"
     report_doc = SimpleDocTemplate(filename, pagesize=A4)
-    response = requests.get(f"http://127.0.0.1:8000/api/v1/defect_info/id={defect_id}")
-    if response.status_code == 404:
+    try:
+        defect = get_defect_by_id(defect_id)
+    except HTTPException as e:
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "error", "log_text":
-            f"Failed to generate report of the defect with id={defect_id}: defect not found"})
-        raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
-    defect = response.json()
+        create_log_record("error", f"Failed to generate pdf-report of the defect with id={defect_id}: "
+                                   f"{e.detail}")
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     # Paragraph style for header text line break
     header_style = getSampleStyleSheet()["Normal"]
@@ -222,11 +214,11 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
     report_doc.build(elements)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
-        f"Report of the defect with id={defect_id} in .pdf format has successfully generated"})
+    create_log_record("report_info", f"Report of the defect with id={defect_id} in .pdf format "
+                                     "has successfully generated")
 
     # Report sending via Telegram and Gmail
-    error_status_code, details = send_report_as_notification(filename=filename, caption=f"PDF-report of defect with "
+    error_status_code, details = await send_report_as_notification(filename=filename, caption=f"PDF-report of defect with "
                                                                                         f"id={defect_id}")
     if error_status_code:
         raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
@@ -241,7 +233,7 @@ def upload_report_of_defect_by_id_in_pdf_format(defect_id: int):
 
 
 @router.post(path="/conveyor/pdf", response_model=ConveyorInfoReportResponseModel)
-def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
+async def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     filename = "report_of_conveyor_info.pdf"
     report_doc = SimpleDocTemplate(filename, pagesize=A4)
 
@@ -251,17 +243,17 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     title_style.spaceAfter = 32
     title = Paragraph(f"REPORT ABOUT CONVEYOR INFO ({datetime.now().strftime("%d.%m.%Y - %H:%M")})", title_style)
 
-    parameters = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/parameters").json()
-    status_response = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/status").json()
+    parameters = get_base_conveyor_parameters()
+    status_response = get_general_status_of_conveyor()
     status_text_color = None
-    if status_response["status"] == "normal":
+    if status_response.status == "normal":
         status_text_color = colors.green
-    elif status_response["status"] == "extreme":
+    elif status_response.status == "extreme":
         status_text_color = colors.orange
-    elif status_response["status"] == "critical":
+    elif status_response.status == "critical":
         status_text_color = colors.red
 
-    defects_count = requests.get("http://127.0.0.1:8000/api/v1/defect_info/count").json()
+    defects_count = get_count_of_all_and_extreme_and_critical_defects()
 
     info_list_style = ParagraphStyle(
         name="InfoListStyle",
@@ -272,20 +264,20 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
 
     parameters_and_status = ListFlowable(
         [
-            Paragraph(f"Belt length: <b>{parameters["belt_length"] / 1000000} km</b>", info_list_style),
-            Paragraph(f"Belt width: <b>{parameters["belt_width"] / 1000} m</b>", info_list_style),
-            Paragraph(f"Belt thickness: <b>{parameters["belt_thickness"]} mm</b>", info_list_style),
+            Paragraph(f"Belt length: <b>{parameters.belt_length / 1000000} km</b>", info_list_style),
+            Paragraph(f"Belt width: <b>{parameters.belt_width / 1000} m</b>", info_list_style),
+            Paragraph(f"Belt thickness: <b>{parameters.belt_thickness} mm</b>", info_list_style),
             Paragraph(f"General status: <b><font color=\"{convert_color_to_hex(status_text_color)}\">"
-                      f"{status_response["status"].upper()}</font></b>", info_list_style),
+                      f"{status_response.status.upper()}</font></b>", info_list_style),
         ],
         bulletType="bullet"
     )
 
     defects_count_info = ListFlowable(
         [
-            Paragraph(f"Total count of defects: <b>{defects_count["total"]}</b>", info_list_style),
-            Paragraph(f"Count of extreme-level defects: <b>{defects_count["extreme"]}</b>", info_list_style),
-            Paragraph(f"Count of critical-level defects: <b>{defects_count["critical"]}</b>", info_list_style)
+            Paragraph(f"Total count of defects: <b>{defects_count.total}</b>", info_list_style),
+            Paragraph(f"Count of extreme-level defects: <b>{defects_count.extreme}</b>", info_list_style),
+            Paragraph(f"Count of critical-level defects: <b>{defects_count.critical}</b>", info_list_style)
         ],
         bulletType="bullet"
     )
@@ -294,11 +286,11 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     report_doc.build(elements)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
-        "Report of the conveyor parameters and status in .pdf format has successfully generated"})
+    create_log_record("report_info", "Report of the conveyor parameters and status in .pdf format "
+                                     "has successfully generated")
 
     # Report sending via Telegram and Gmail
-    error_status_code, details = send_report_as_notification(filename=filename, caption="PDF-report of conveyor "
+    error_status_code, details = await send_report_as_notification(filename=filename, caption="PDF-report of conveyor "
                                                                                         "parameters and status")
     if error_status_code:
         raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
@@ -307,20 +299,21 @@ def upload_report_of_conveyor_parameters_and_status_in_pdf_format():
     response = ConveyorInfoReportResponseModel(
         doc_type="pdf",
         timestamp=datetime.now(),
-        status=status_response["status"]
+        status=status_response.status
     )
     return response
 
 
 @router.post(path="/all/csv", response_model=AllDefectsReportResponseModel)
-def upload_report_of_all_defects_in_csv_format():
-    all_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/all").json()
-    extreme_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/extreme").json()
-    critical_defects = requests.get("http://127.0.0.1:8000/api/v1/defect_info/critical").json()
+async def upload_report_of_all_defects_in_csv_format():
+    all_defects = get_all_defects()
+    extreme_defects = get_extreme_defects()
+    critical_defects = get_critical_defects()
 
     # Parameter "base64_photo" excluded from header and lines because base64-representation of defect's photo is large
-    csv_table_headers = ",".join([str(key) for key, value in all_defects[0].items() if key != "base64_photo"]) + "\n"
-    csv_table_lines = [",".join([str(value) for key, value in defect.items() if key != "base64_photo"]) +
+    csv_table_headers = (",".join([str(key) for key in all_defects[0].model_dump().keys() if key != "base64_photo"]) +
+                         "\n")
+    csv_table_lines = [",".join([str(value) for key, value in defect.model_dump().items() if key != "base64_photo"]) +
                        "\n" for defect in all_defects]
 
     filename = "report_of_all_defects.csv"
@@ -329,11 +322,11 @@ def upload_report_of_all_defects_in_csv_format():
         output_file.writelines(line for line in csv_table_lines)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
-        "Report of the all defects in .csv format has successfully generated"})
+    create_log_record("report_info", "Report of the all defects in .csv format "
+                                     "has successfully generated")
 
     # Report sending via Telegram and Gmail
-    error_status_code, details = send_report_as_notification(filename=filename, caption="CSV-report of all defects")
+    error_status_code, details = await send_report_as_notification(filename=filename, caption="CSV-report of all defects")
     if error_status_code:
         raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
                                                                   f"error during notification sending: {details}")
@@ -349,18 +342,19 @@ def upload_report_of_all_defects_in_csv_format():
 
 
 @router.post(path="/id={defect_id}/csv", response_model=OneDefectReportResponseModel)
-def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
-    response = requests.get(f"http://127.0.0.1:8000/api/v1/defect_info/id={defect_id}")
-    if response.status_code == 404:
+async def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
+    try:
+        defect = get_defect_by_id(defect_id)
+    except HTTPException as e:
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "error", "log_text":
-            f"Failed to generate report of the defect with id={defect_id}: defect not found"})
-        raise HTTPException(status_code=404, detail=f"There is no defect with id={defect_id}")
-    defect = response.json()
+        create_log_record("error", f"Failed to generate csv-report of the defect with id={defect_id}: "
+                                   f"{e.detail}")
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     # Parameter "base64_photo" excluded from header and lines because base64-representation of defect's photo is large
-    csv_headers = ",".join([str(key) for key, value in defect.items() if key != "base64_photo"]) + "\n"
-    csv_defect_info = ",".join([str(value) for key, value in defect.items() if key != "base64_photo"]) + "\n"
+    csv_headers = ",".join([str(key) for key in defect.model_dump().keys() if key != "base64_photo"]) + "\n"
+    csv_defect_info = (",".join([str(value) for key, value in defect.model_dump().items() if key != "base64_photo"]) +
+                       "\n")
 
     filename = f"report_of_defect_id_{defect_id}.csv"
     with open(filename, "w", encoding="utf-8") as output_file:
@@ -368,11 +362,11 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
         output_file.write(csv_defect_info)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
-        f"Report of the defect with id={defect_id} in .csv format has successfully generated"})
+    create_log_record("report_info", f"Report of the defect with id={defect_id} in .csv format "
+                                     f"has successfully generated")
 
     # Report sending via Telegram and Gmail
-    error_status_code, details = send_report_as_notification(filename=filename, caption=f"CSV-report of defect with "
+    error_status_code, details = await send_report_as_notification(filename=filename, caption=f"CSV-report of defect with "
                                                                                         f"id={defect_id}")
     if error_status_code:
         raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
@@ -387,16 +381,16 @@ def upload_report_of_defect_by_id_in_csv_format(defect_id: int):
 
 
 @router.post(path="/conveyor/csv", response_model=ConveyorInfoReportResponseModel)
-def upload_report_of_conveyor_parameters_and_status_in_csv_format():
-    parameters = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/parameters").json()
-    status_response = requests.get("http://127.0.0.1:8000/api/v1/conveyor_info/status").json()
-    defects_count = requests.get("http://127.0.0.1:8000/api/v1/defect_info/count").json()
+async def upload_report_of_conveyor_parameters_and_status_in_csv_format():
+    parameters = get_base_conveyor_parameters()
+    status_response = get_general_status_of_conveyor()
+    defects_count = get_count_of_all_and_extreme_and_critical_defects()
 
     csv_headers = ("belt_length,belt_width,belt_thickness,general_status,total_count_of_defects,count_of_extreme,"
                    "count_of_critical\n")
-    csv_conveyor_info = (",".join([str(value) for (key, value) in parameters.items()]) +
-                         f",{status_response["status"]}," +
-                         ",".join([str(value) for (key, value) in defects_count.items()]) + "\n")
+    csv_conveyor_info = (",".join([str(value) for value in parameters.model_dump().values()]) +
+                         f",{status_response.status}," +
+                         ",".join([str(value) for value in defects_count.model_dump().values()]) + "\n")
 
     filename = "report_of_conveyor_info.csv"
     with open("report_of_conveyor_info.csv", "w", encoding="utf-8") as output_file:
@@ -404,11 +398,11 @@ def upload_report_of_conveyor_parameters_and_status_in_csv_format():
         output_file.write(csv_conveyor_info)
 
     # Action logging
-    requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record", params={"log_type": "report_info", "log_text":
-        "Report of the conveyor parameters and status in .csv format has successfully generated"})
+    create_log_record("report_info", "Report of the conveyor parameters and status in .csv format "
+                                     "has successfully generated")
 
     # Report sending via Telegram and Gmail
-    error_status_code, details = send_report_as_notification(filename=filename, caption="CSV-report of conveyor "
+    error_status_code, details = await send_report_as_notification(filename=filename, caption="CSV-report of conveyor "
                                                                                         "parameters and status")
     if error_status_code:
         raise HTTPException(status_code=error_status_code, detail="Report was successfully generated, but there was "
@@ -417,6 +411,6 @@ def upload_report_of_conveyor_parameters_and_status_in_csv_format():
     response = ConveyorInfoReportResponseModel(
         doc_type="csv",
         timestamp=datetime.now(),
-        status=status_response["status"]
+        status=status_response.status
     )
     return response

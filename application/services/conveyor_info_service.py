@@ -1,14 +1,14 @@
 from datetime import datetime, timezone
-import requests
 
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select, desc
 
 from application.db_connection import engine
-from application.models.db_models import ObjectType, Object, ConveyorParameters, ConveyorStatus
+from application.models.db_models import ObjectType, Object, ConveyorParameters, ConveyorStatus, Defect
 from application.models.api_models import (ServiceInfoResponseModel, ConveyorParametersResponseModel,
                                            ConveyorStatusResponseModel, NewConveyorParameters)
 from application.services.authentication_service import get_current_admin_user
+from application.services.logging_service import create_log_record
 
 router = APIRouter(prefix="/conveyor_info", tags=["Conveyor General Information Service"],
                    dependencies=[Depends(get_current_admin_user)])
@@ -60,7 +60,7 @@ def get_general_status_of_conveyor():
     with Session(engine) as session:
         last_status_record = session.exec(select(ConveyorStatus).order_by(desc(ConveyorStatus.id))).first()
         if not last_status_record:
-            last_status_record = requests.post("http://127.0.0.1:8000/api/v1/conveyor_info/create_record").json()
+            last_status_record = create_record_of_current_general_conveyor_status()
             return last_status_record
         return ConveyorStatusResponseModel(
             status=determine_criticality_of_conveyor_status(last_status_record)
@@ -71,30 +71,39 @@ def get_general_status_of_conveyor():
 def create_record_of_current_general_conveyor_status():
     with Session(engine) as session:
         conv_status_object_type = session.exec(select(ObjectType).where(ObjectType.name == "conv_state")).one()
-        base_object_for_new_conv_status = Object(type_object=conv_status_object_type,
-                                                 time=datetime.now(timezone.utc).replace(tzinfo=None))
-        current_conv_status = ConveyorStatus(base_object=base_object_for_new_conv_status)
+        defects = session.exec(select(Defect)).all()
 
-        defects_count = requests.get("http://127.0.0.1:8000/api/v1/defect_info/count").json()
-        if defects_count["critical"] > 0:
-            current_conv_status.is_extreme = False
-            current_conv_status.is_critical = True
-        elif defects_count["extreme"]:
-            current_conv_status.is_extreme = True
-            current_conv_status.is_critical = False
+        count_of_critical_defects = sum(1 for defect in defects if defect.is_critical)
+        count_of_extreme_defects = sum(1 for defect in defects if defect.is_extreme)
+
+        current_status = None
+        if count_of_critical_defects > 0:
+            current_status = "critical"
+        elif count_of_extreme_defects > 0:
+            current_status = "extreme"
         else:
-            current_conv_status.is_extreme = False
-            current_conv_status.is_critical = False
+            current_status = "normal"
 
-        session.add(current_conv_status)
-        session.commit()
-        session.refresh(current_conv_status)
+        previous_status = None
+        last_status_record = session.exec(select(ConveyorStatus).order_by(desc(ConveyorStatus.id))).first()
+        if last_status_record:
+            previous_status = determine_criticality_of_conveyor_status(last_status_record)
 
-        current_status = determine_criticality_of_conveyor_status(current_conv_status)
-        # Action logging
-        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                      params={"log_type": "state_of_devices", "log_text": f"Set current general status of conveyor: "
-                                                                          f"\"{current_status}\""})
+        if last_status_record is None or current_status != previous_status:
+            base_object_for_new_conv_status = Object(type_object=conv_status_object_type,
+                                                     time=datetime.now(timezone.utc).replace(tzinfo=None))
+            current_conv_status_object = ConveyorStatus(base_object=base_object_for_new_conv_status)
+
+            current_conv_status_object.is_critical = current_status == "critical"
+            current_conv_status_object.is_extreme = current_status == "extreme"
+
+            session.add(conv_status_object_type)
+            session.add(current_conv_status_object)
+            session.commit()
+
+            # Action logging
+            create_log_record("state_of_devices", f"Set current general status of conveyor: "
+                                                  f"\"{current_status}\"")
 
         return ConveyorStatusResponseModel(
             status=current_status
@@ -113,8 +122,7 @@ def change_base_conveyor_parameters(new_parameters: NewConveyorParameters):
         session.commit()
 
         # Action logging
-        requests.post(url="http://127.0.0.1:8000/api/v1/logs/create_record",
-                      params={"log_type": "action_info","log_text": "Base parameters of the conveyor were updated"})
+        create_log_record("state_of_devices", "Base parameters of the conveyor were updated")
 
         return ConveyorParametersResponseModel(
             belt_length=current_params.belt_length,

@@ -28,13 +28,28 @@ export default function Sidebar({open, setOpen}) {
     ];
 
     const DrawerList = (
-        <Box sx={{width: 200}} role="presentation">
+        <Box sx={{width: 250}} role="presentation">
             <List>
                 {buttons.map(({title, icon, path}) => {
                     const isActive = location.pathname === path;
                     return (
-                        <ListItem key={title} disablePadding>
-                            <ListItemButton onClick={() => transitToSection(path)} selected={isActive}>
+                        <ListItem key={title}>
+                            <ListItemButton
+                                onClick={() => transitToSection(path)}
+                                selected={isActive}
+                                sx={{
+                                    '&.Mui-selected': {
+                                        backgroundColor: 'primary.main',
+                                        color: 'white',
+                                        '& .MuiListItemIcon-root': {
+                                            color: 'white',
+                                        },
+                                    },
+                                    '&.Mui-selected:hover': {
+                                        backgroundColor: 'primary.dark',
+                                    },
+                                }}
+                            >
                                 <ListItemIcon>
                                     {icon}
                                 </ListItemIcon>

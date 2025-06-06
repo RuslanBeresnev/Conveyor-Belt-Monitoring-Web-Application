@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import Settings
+from .config import settings
 from .db_listener import lifespan
 from application.services.authentication_service import router as authentication_service_router
 from application.services.notification_service import router as notification_service_router
@@ -24,8 +24,6 @@ api_router.include_router(maintenance_service_router)
 
 application = FastAPI(lifespan=lifespan)
 application.include_router(api_router)
-
-settings = Settings()
 
 origins = [f"http://{settings.CLIENT_ADDRESS}:{settings.CLIENT_PORT}"]
 application.add_middleware(

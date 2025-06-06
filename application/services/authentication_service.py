@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 
-from application.config import Settings
+from application.config import settings
 from application.db_connection import engine
 from application.models.db_models import User
 from application.models.api_models import ServiceInfoResponseModel, TokenResponseModel
@@ -15,7 +15,6 @@ from application.models.api_models import ServiceInfoResponseModel, TokenRespons
 ALGORITHM = "HS256"
 
 router = APIRouter(prefix="/auth", tags=["Authentication Service"])
-settings = Settings()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -58,14 +57,6 @@ def get_current_admin_user(current_user: User = Depends(get_current_user)):
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Forbidden: you do not have sufficient rights "
                                                     "to access this resource")
-    return current_user
-
-
-async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)],
-):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 

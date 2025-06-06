@@ -8,9 +8,9 @@ export function ErrorProvider({ children }) {
     const [open, setOpen] = useState(false);
 
     const showError = (error, title) => {
-        // If request was rejected by interceptor or server has returned HTTP 401 status-code then error
-        // will not display because application instantly will redirect to /auth route
-        if (error instanceof Error || error.response.status === 401) return;
+        // If server has returned HTTP 401 status-code then error will not display because application instantly
+        // will redirect to /auth route
+        if (error.response?.status === 401) return;
         setError(error);
         setTitle(title);
         setOpen(true);
