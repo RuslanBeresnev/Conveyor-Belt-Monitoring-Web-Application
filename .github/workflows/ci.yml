@@ -31,7 +31,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
@@ -51,11 +51,20 @@ jobs:
 
       - name: Create .env file
         run: |
-          echo TELEGRAM_BOT_TOKEN = \"test_token\" > .env
-          echo DATABASE_URL = \"postgresql://test_user:test_password@localhost:5432/test_db\" >> .env
+          echo CLIENT_ADDRESS=\"localhost\" >> .env
+          echo CLIENT_PORT=3000 >> .env
+          echo ADMIN_USERNAME=\"Admin\" >> .env
+          echo ADMIN_PASSWORD=\"Admin12345678\" >> .env
+          echo JWT_SIGN_SECRET_KEY=\"e4aJWT8eSIGNbdb917TEST4tgj84SECRETwwff9kl2KEYd9c7a59fabc\" >> .env
+          echo AUTH_TOKEN_EXPIRATION_MINUTES=15 >> .env
+          echo DATABASE_URL=\"postgresql://test_user:test_password@localhost:5432/test_db\" >> .env
+          echo GMAIL_ADDRESS=\"cool5admin@gmail.com\" >> .env
+          echo TELEGRAM_BOT_TOKEN=\"test_token\" >> .env
+          echo TELEGRAM_USER_NAME=\"\" >> .env
+          echo TELEGRAM_USER_CHAT_ID=\"\" >> .env
 
       - name: Run linter
-        run: pylint ./**/*.py --disable=C0301,C0114,C0115,C0116
+        run: pylint application/**/*.py --disable=C0301,C0114,C0115,C0116
 
       - name: Run tests
-        run: pytest
+        run: pytest tests
