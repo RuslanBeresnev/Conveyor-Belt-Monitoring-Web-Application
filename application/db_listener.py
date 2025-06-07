@@ -1,11 +1,9 @@
-from contextlib import asynccontextmanager
 import base64
 from io import BytesIO
 import json
 import binascii
-from asyncio import create_task, sleep
+from asyncio import sleep
 
-from fastapi import FastAPI
 from asyncpg import connect
 from sqlmodel import Session, select
 
@@ -112,9 +110,3 @@ async def listen_for_new_defects():
     await db_connection.add_listener("new_defect", on_new_defect_notify_handler)
     while True:
         await sleep(1)
-
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    create_task(listen_for_new_defects())
-    yield
